@@ -3,7 +3,6 @@ module fusion_plus::constants {
     use aptos_framework::fungible_asset::{Metadata};
     use aptos_framework::object::{Self, Object};
 
-
     // - - - - CONSTANTS - - - -
 
     const DEFAULT_SAFETY_DEPOSIT_METADATA_ADDRESS: address = @0xa;

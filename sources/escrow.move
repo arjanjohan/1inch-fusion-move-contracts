@@ -92,6 +92,32 @@ module fusion_plus::escrow {
         hashlock: HashLock
     }
 
+    // - - - - ENTRY FUNCTIONS - - - -
+
+    public entry fun new_from_order_entry(
+        resolver: &signer, fusion_order: Object<FusionOrder>
+    ) {
+        new_from_order(resolver, fusion_order);
+    }
+
+    public entry fun new_from_resolver_entry(
+        resolver: &signer,
+        recipient_address: address,
+        metadata: Object<Metadata>,
+        amount: u64,
+        chain_id: u64,
+        hash: vector<u8>
+    ) {
+        new_from_resolver(
+            resolver,
+            recipient_address,
+            metadata,
+            amount,
+            chain_id,
+            hash
+        );
+    }
+
     // - - - - PUBLIC FUNCTIONS - - - -
 
     /// Creates a new Escrow from a fusion order.
@@ -265,7 +291,9 @@ module fusion_plus::escrow {
     /// @reverts EINVALID_CALLER if the signer is not the resolver.
     /// @reverts EINVALID_PHASE if not in exclusive phase.
     /// @reverts EINVALID_SECRET if the secret does not match the hashlock.
-    public entry fun withdraw(signer: &signer, escrow: Object<Escrow>, secret: vector<u8>) acquires Escrow, EscrowController {
+    public entry fun withdraw(
+        signer: &signer, escrow: Object<Escrow>, secret: vector<u8>
+    ) acquires Escrow, EscrowController {
         let signer_address = signer::address_of(signer);
 
         assert!(escrow_exists(escrow), EOBJECT_DOES_NOT_EXIST);
@@ -277,11 +305,12 @@ module fusion_plus::escrow {
         assert!(timelock::is_in_exclusive_phase(&timelock), EINVALID_PHASE);
 
         // Verify the secret matches the hashlock
-        assert!(hashlock::verify_hashlock(&escrow_ref.hashlock, secret), EINVALID_SECRET);
+        assert!(
+            hashlock::verify_hashlock(&escrow_ref.hashlock, secret), EINVALID_SECRET
+        );
 
         let escrow_address = object::object_address(&escrow);
-        let EscrowController { extend_ref, delete_ref } =
-            move_from(escrow_address);
+        let EscrowController { extend_ref, delete_ref } = move_from(escrow_address);
 
         let object_signer = object::generate_signer_for_extending(&extend_ref);
 
@@ -328,7 +357,9 @@ module fusion_plus::escrow {
     /// @reverts EOBJECT_DOES_NOT_EXIST if the escrow does not exist.
     /// @reverts EINVALID_CALLER if the signer is not the resolver during private cancellation.
     /// @reverts EINVALID_PHASE if not in cancellation phase.
-    public entry fun recovery(signer: &signer, escrow: Object<Escrow>) acquires Escrow, EscrowController {
+    public entry fun recovery(
+        signer: &signer, escrow: Object<Escrow>
+    ) acquires Escrow, EscrowController {
         let signer_address = signer::address_of(signer);
 
         assert!(escrow_exists(escrow), EOBJECT_DOES_NOT_EXIST);
@@ -339,12 +370,13 @@ module fusion_plus::escrow {
         if (timelock::is_in_private_cancellation_phase(&timelock)) {
             assert!(escrow_ref.resolver == signer_address, EINVALID_CALLER);
         } else {
-            assert!(timelock::is_in_public_cancellation_phase(&timelock), EINVALID_PHASE);
+            assert!(
+                timelock::is_in_public_cancellation_phase(&timelock), EINVALID_PHASE
+            );
         };
 
         let escrow_address = object::object_address(&escrow);
-        let EscrowController { extend_ref, delete_ref } =
-            move_from(escrow_address);
+        let EscrowController { extend_ref, delete_ref } = move_from(escrow_address);
 
         let object_signer = object::generate_signer_for_extending(&extend_ref);
 
@@ -372,13 +404,7 @@ module fusion_plus::escrow {
 
         // Emit recovery event
         event::emit(
-            EscrowRecoveredEvent {
-                escrow,
-                recovered_by,
-                returned_to,
-                metadata,
-                amount
-            }
+            EscrowRecoveredEvent { escrow, recovered_by, returned_to, metadata, amount }
         );
     }
 
@@ -475,16 +501,13 @@ module fusion_plus::escrow {
         object::object_exists<Escrow>(object::object_address(&escrow))
     }
 
-
     // - - - - BORROW FUNCTIONS - - - -
 
     /// Borrows an immutable reference to the Escrow.
     ///
     /// @param escrow_obj The escrow object.
     /// @return &Escrow Immutable reference to the escrow.
-    inline fun borrow_escrow(
-        escrow_obj: &Object<Escrow>
-    ): &Escrow acquires Escrow {
+    inline fun borrow_escrow(escrow_obj: &Object<Escrow>): &Escrow acquires Escrow {
         borrow_global<Escrow>(object::object_address(escrow_obj))
     }
 
@@ -492,9 +515,7 @@ module fusion_plus::escrow {
     ///
     /// @param escrow_obj The escrow object.
     /// @return &mut Escrow Mutable reference to the escrow.
-    inline fun borrow_escrow_mut(
-        escrow_obj: &Object<Escrow>
-    ): &mut Escrow acquires Escrow {
+    inline fun borrow_escrow_mut(escrow_obj: &Object<Escrow>): &mut Escrow acquires Escrow {
         borrow_global_mut<Escrow>(object::object_address(escrow_obj))
     }
 

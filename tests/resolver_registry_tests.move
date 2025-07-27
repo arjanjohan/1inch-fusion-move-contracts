@@ -33,11 +33,13 @@ module fusion_plus::resolver_registry_tests {
         assert!(resolver_registry::is_active_resolver(resolver_address), 0);
 
         // Verify registration timestamp
-        let registered_at = resolver_registry::get_resolver_registered_at(resolver_address);
+        let registered_at =
+            resolver_registry::get_resolver_registered_at(resolver_address);
         assert!(registered_at > 0, 0);
 
         // Verify last status change timestamp
-        let last_status_change = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let last_status_change =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
         assert!(last_status_change > 0, 0);
         assert!(last_status_change == registered_at, 0); // Should be same initially
     }
@@ -96,8 +98,13 @@ module fusion_plus::resolver_registry_tests {
         assert!(resolver_registry::is_active_resolver(resolver_address) == false, 0);
 
         // Verify last status change timestamp updated
-        let last_status_change = resolver_registry::get_resolver_last_status_change(resolver_address);
-        assert!(last_status_change > resolver_registry::get_resolver_registered_at(resolver_address), 0);
+        let last_status_change =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
+        assert!(
+            last_status_change
+                > resolver_registry::get_resolver_registered_at(resolver_address),
+            0
+        );
     }
 
     #[test]
@@ -169,8 +176,13 @@ module fusion_plus::resolver_registry_tests {
         assert!(resolver_registry::is_active_resolver(resolver_address), 0);
 
         // Verify last status change timestamp updated
-        let last_status_change = resolver_registry::get_resolver_last_status_change(resolver_address);
-        assert!(last_status_change > resolver_registry::get_resolver_registered_at(resolver_address), 0);
+        let last_status_change =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
+        assert!(
+            last_status_change
+                > resolver_registry::get_resolver_registered_at(resolver_address),
+            0
+        );
     }
 
     #[test]
@@ -250,8 +262,10 @@ module fusion_plus::resolver_registry_tests {
         // Register resolver
         resolver_registry::register_resolver(&admin, resolver_address);
 
-        let registered_at = resolver_registry::get_resolver_registered_at(resolver_address);
-        let initial_status_change = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let registered_at =
+            resolver_registry::get_resolver_registered_at(resolver_address);
+        let initial_status_change =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
 
         // Verify timestamps are reasonable
         assert!(registered_at >= before_registration, 0);
@@ -262,7 +276,8 @@ module fusion_plus::resolver_registry_tests {
 
         resolver_registry::deactivate_resolver(&admin, resolver_address);
 
-        let after_deactivation = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let after_deactivation =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
         assert!(after_deactivation > initial_status_change, 0);
 
         // Fast forward time and reactivate
@@ -270,7 +285,8 @@ module fusion_plus::resolver_registry_tests {
 
         resolver_registry::reactivate_resolver(&admin, resolver_address);
 
-        let after_reactivation = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let after_reactivation =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
         assert!(after_reactivation > after_deactivation, 0);
     }
 
@@ -284,14 +300,16 @@ module fusion_plus::resolver_registry_tests {
         resolver_registry::register_resolver(&admin, resolver_address);
         assert!(resolver_registry::is_active_resolver(resolver_address), 0);
 
-        let initial_status_change = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let initial_status_change =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
 
         // Fast forward time and deactivate
         timestamp::fast_forward_seconds(50);
         resolver_registry::deactivate_resolver(&admin, resolver_address);
         assert!(resolver_registry::is_active_resolver(resolver_address) == false, 0);
 
-        let after_deactivation = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let after_deactivation =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
         assert!(after_deactivation > initial_status_change, 0);
 
         // Fast forward time and reactivate
@@ -299,7 +317,8 @@ module fusion_plus::resolver_registry_tests {
         resolver_registry::reactivate_resolver(&admin, resolver_address);
         assert!(resolver_registry::is_active_resolver(resolver_address), 0);
 
-        let after_reactivation = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let after_reactivation =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
         assert!(after_reactivation > after_deactivation, 0);
 
         // Fast forward time and deactivate again
@@ -307,7 +326,8 @@ module fusion_plus::resolver_registry_tests {
         resolver_registry::deactivate_resolver(&admin, resolver_address);
         assert!(resolver_registry::is_active_resolver(resolver_address) == false, 0);
 
-        let final_status_change = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let final_status_change =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
         assert!(final_status_change > after_reactivation, 0);
     }
 
@@ -321,7 +341,8 @@ module fusion_plus::resolver_registry_tests {
         resolver_registry::register_resolver(&admin, resolver_address);
         assert!(resolver_registry::is_active_resolver(resolver_address), 0);
 
-        let registered_at = resolver_registry::get_resolver_registered_at(resolver_address);
+        let registered_at =
+            resolver_registry::get_resolver_registered_at(resolver_address);
         assert!(registered_at > 0, 0);
 
         // 2. Fast forward time and deactivate resolver
@@ -329,7 +350,8 @@ module fusion_plus::resolver_registry_tests {
         resolver_registry::deactivate_resolver(&admin, resolver_address);
         assert!(resolver_registry::is_active_resolver(resolver_address) == false, 0);
 
-        let deactivated_at = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let deactivated_at =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
         assert!(deactivated_at > registered_at, 0);
 
         // 3. Fast forward time and reactivate resolver
@@ -337,7 +359,8 @@ module fusion_plus::resolver_registry_tests {
         resolver_registry::reactivate_resolver(&admin, resolver_address);
         assert!(resolver_registry::is_active_resolver(resolver_address), 0);
 
-        let reactivated_at = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let reactivated_at =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
         assert!(reactivated_at > deactivated_at, 0);
 
         // 4. Fast forward time and final deactivation
@@ -345,7 +368,8 @@ module fusion_plus::resolver_registry_tests {
         resolver_registry::deactivate_resolver(&admin, resolver_address);
         assert!(resolver_registry::is_active_resolver(resolver_address) == false, 0);
 
-        let final_deactivation = resolver_registry::get_resolver_last_status_change(resolver_address);
+        let final_deactivation =
+            resolver_registry::get_resolver_last_status_change(resolver_address);
         assert!(final_deactivation > reactivated_at, 0);
     }
 

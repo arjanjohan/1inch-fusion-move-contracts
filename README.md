@@ -145,6 +145,25 @@ aptos move publish --named-addresses fusion_plus=YOUR_ACCOUNT_ADDRESS
 - Frontend
 - Partial fills
 
+## Hackathon bounties
+
+### Extend Fusion+ to Aptos
+
+This submission is an implementation of 1inch Fusion+ built with Aptos Move. One of the main differences between Move and EVM is that everything in Move is owned, unlike EVM where contracts can transfer user funds with prior approval. This means that the resolver cannot directly transfer the user's funds to the escrow on behalf of the user.
+
+I solved this ownership challenge by implementing a two-step process: users first deposit funds into the `fusion_order.move` module, which stores the funds in an object that only the user and the Escow module can interact with. The resolver can then withdraw with these pre-deposited funds when creating the escrow (in `escrow.move`). This maintains Move's security model while enabling the Fusion+ workflow.
+
+Until the resolver picks up the order, the user retains full control and can withdraw their funds from the `fusion_order` at any time, effectively cancelling their order. This provides users with the same flexibility as the EVM version while respecting Move's ownership principles.
+
+Besides this, my implementation closely follows the EVM version's architecture, with everything divided into separate modules for clarity and readability: `fusion_order.move` handles order creation on maker side, `escrow.move` manages asset with a timelock and hashlock and `resolver_registry.move` manages the whitelisted resolvers.
+
+- [Deployed smart contracts]()
+
+### Extend Fusion+ to Any Other Chain
+Since Movement uses the same smart contract language, I also deployed the contracts to Movement Network.
+
+- [Deployed smart contracts]()
+
 ## Team
 
 Built during the 1inch & ETHGlobal Unite DeFi hackathon by:

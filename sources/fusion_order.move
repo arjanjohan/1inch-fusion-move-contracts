@@ -247,12 +247,7 @@ module fusion_plus::fusion_order {
 
         // Emit cancellation event
         event::emit(
-            FusionOrderCancelledEvent {
-                fusion_order,
-                owner,
-                metadata,
-                amount
-            }
+            FusionOrderCancelledEvent { fusion_order, owner, metadata, amount }
         );
 
     }
@@ -416,7 +411,9 @@ module fusion_plus::fusion_order {
     /// @param fusion_order The fusion order to check.
     /// @param address The address to check against.
     /// @return bool True if the address is the owner, false otherwise.
-    public fun is_owner(fusion_order: Object<FusionOrder>, address: address): bool acquires FusionOrder {
+    public fun is_owner(
+        fusion_order: Object<FusionOrder>, address: address
+    ): bool acquires FusionOrder {
         let fusion_order_ref = borrow_fusion_order(&fusion_order);
         fusion_order_ref.owner == address
     }

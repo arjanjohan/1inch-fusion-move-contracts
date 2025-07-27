@@ -36,9 +36,13 @@ module fusion_plus::fusion_order_tests {
         let resolver = common::initialize_account_with_fa(@0x203);
 
         resolver_registry::init_module_for_test();
-        resolver_registry::register_resolver(&fusion_signer, signer::address_of(&resolver));
+        resolver_registry::register_resolver(
+            &fusion_signer, signer::address_of(&resolver)
+        );
 
-        let (metadata, mint_ref) = common::create_test_token(&fusion_signer, b"Test Token");
+        let (metadata, mint_ref) = common::create_test_token(
+            &fusion_signer, b"Test Token"
+        );
 
         common::mint_fa(&mint_ref, MINT_AMOUNT, signer::address_of(&account_1));
         common::mint_fa(&mint_ref, MINT_AMOUNT, signer::address_of(&account_2));
@@ -61,7 +65,9 @@ module fusion_plus::fusion_order_tests {
             );
 
         // Verify initial state
-        assert!(fusion_order::get_owner(fusion_order) == signer::address_of(&account_1), 0);
+        assert!(
+            fusion_order::get_owner(fusion_order) == signer::address_of(&account_1), 0
+        );
         assert!(fusion_order::get_metadata(fusion_order) == metadata, 0);
         assert!(fusion_order::get_amount(fusion_order) == ASSET_AMOUNT, 0);
         assert!(fusion_order::get_chain_id(fusion_order) == CHAIN_ID, 0);
@@ -103,7 +109,8 @@ module fusion_plus::fusion_order_tests {
         let (owner, _, _, metadata, _) = setup_test();
 
         // Record initial balances
-        let initial_main_balance = primary_fungible_store::balance(signer::address_of(&owner), metadata);
+        let initial_main_balance =
+            primary_fungible_store::balance(signer::address_of(&owner), metadata);
         let initial_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&owner),
@@ -131,7 +138,8 @@ module fusion_plus::fusion_order_tests {
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == false, 0);
 
         // Verify owner received the main asset back
-        let final_main_balance = primary_fungible_store::balance(signer::address_of(&owner), metadata);
+        let final_main_balance =
+            primary_fungible_store::balance(signer::address_of(&owner), metadata);
         assert!(final_main_balance == initial_main_balance, 0);
 
         // Verify safety deposit is returned
@@ -238,8 +246,10 @@ module fusion_plus::fusion_order_tests {
         let (owner1, owner2, _, metadata, _) = setup_test();
 
         // Record initial balances
-        let initial_balance1 = primary_fungible_store::balance(signer::address_of(&owner1), metadata);
-        let initial_balance2 = primary_fungible_store::balance(signer::address_of(&owner2), metadata);
+        let initial_balance1 =
+            primary_fungible_store::balance(signer::address_of(&owner1), metadata);
+        let initial_balance2 =
+            primary_fungible_store::balance(signer::address_of(&owner2), metadata);
 
         let fusion_order1 =
             fusion_order::new(
@@ -264,8 +274,10 @@ module fusion_plus::fusion_order_tests {
         fusion_order::cancel(&owner2, fusion_order2);
 
         // Verify each owner received their funds back
-        let final_balance1 = primary_fungible_store::balance(signer::address_of(&owner1), metadata);
-        let final_balance2 = primary_fungible_store::balance(signer::address_of(&owner2), metadata);
+        let final_balance1 =
+            primary_fungible_store::balance(signer::address_of(&owner1), metadata);
+        let final_balance2 =
+            primary_fungible_store::balance(signer::address_of(&owner2), metadata);
 
         assert!(final_balance1 == initial_balance1, 0);
         assert!(final_balance2 == initial_balance2, 0);
@@ -280,7 +292,8 @@ module fusion_plus::fusion_order_tests {
         common::mint_fa(&mint_ref, large_amount, signer::address_of(&owner));
 
         // Record initial balance
-        let initial_balance = primary_fungible_store::balance(signer::address_of(&owner), metadata);
+        let initial_balance =
+            primary_fungible_store::balance(signer::address_of(&owner), metadata);
 
         // Create the fusion order
         let fusion_order =
@@ -296,7 +309,8 @@ module fusion_plus::fusion_order_tests {
         fusion_order::cancel(&owner, fusion_order);
 
         // Verify owner received the funds back
-        let final_balance = primary_fungible_store::balance(signer::address_of(&owner), metadata);
+        let final_balance =
+            primary_fungible_store::balance(signer::address_of(&owner), metadata);
         assert!(final_balance == initial_balance, 0);
     }
 
@@ -349,20 +363,22 @@ module fusion_plus::fusion_order_tests {
     fun test_resolver_accept_order_invalid_resolver() {
         let (owner, _, _, metadata, _) = setup_test();
 
-        let fusion_order = fusion_order::new(
-            &owner,
-            metadata,
-            ASSET_AMOUNT,
-            CHAIN_ID,
-            hash::sha3_256(TEST_SECRET)
-        );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                metadata,
+                ASSET_AMOUNT,
+                CHAIN_ID,
+                hash::sha3_256(TEST_SECRET)
+            );
 
         // Create a different account that's not the resolver
         let invalid_resolver = account::create_account_for_test(@0x901);
 
         // Try to accept order with invalid resolver
         // Directly call resolver_accept_order
-        let (asset, safety_deposit_asset) = fusion_order::resolver_accept_order(&invalid_resolver, fusion_order);
+        let (asset, safety_deposit_asset) =
+            fusion_order::resolver_accept_order(&invalid_resolver, fusion_order);
 
         // Deposit assets into 0x0
         primary_fungible_store::deposit(@0x0, asset);
@@ -376,13 +392,14 @@ module fusion_plus::fusion_order_tests {
         let (_, _, resolver, metadata, _) = setup_test();
 
         // Create a fusion order
-        let fusion_order = fusion_order::new(
-            &resolver,
-            metadata,
-            ASSET_AMOUNT,
-            CHAIN_ID,
-            hash::sha3_256(TEST_SECRET)
-        );
+        let fusion_order =
+            fusion_order::new(
+                &resolver,
+                metadata,
+                ASSET_AMOUNT,
+                CHAIN_ID,
+                hash::sha3_256(TEST_SECRET)
+            );
 
         let fusion_order_address = object::object_address(&fusion_order);
 
@@ -392,7 +409,8 @@ module fusion_plus::fusion_order_tests {
         // Verify the order is deleted
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == false, 0);
 
-        let (asset, safety_deposit_asset) = fusion_order::resolver_accept_order(&resolver, fusion_order);
+        let (asset, safety_deposit_asset) =
+            fusion_order::resolver_accept_order(&resolver, fusion_order);
 
         // Deposit assets into 0x0
         primary_fungible_store::deposit(@0x0, asset);
@@ -403,13 +421,14 @@ module fusion_plus::fusion_order_tests {
     fun test_fusion_order_utility_functions() {
         let (owner, _, _, metadata, _) = setup_test();
 
-        let fusion_order = fusion_order::new(
-            &owner,
-            metadata,
-            ASSET_AMOUNT,
-            CHAIN_ID,
-            hash::sha3_256(TEST_SECRET)
-        );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                metadata,
+                ASSET_AMOUNT,
+                CHAIN_ID,
+                hash::sha3_256(TEST_SECRET)
+            );
 
         // Test is_valid_hash
         assert!(fusion_order::is_valid_hash(&hash::sha3_256(TEST_SECRET)), 0);
@@ -441,13 +460,14 @@ module fusion_plus::fusion_order_tests {
 
         let large_hash = hash::sha3_256(large_secret);
 
-        let fusion_order = fusion_order::new(
-            &owner,
-            metadata,
-            ASSET_AMOUNT,
-            CHAIN_ID,
-            large_hash
-        );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                metadata,
+                ASSET_AMOUNT,
+                CHAIN_ID,
+                large_hash
+            );
 
         // Verify the hash is stored correctly
         assert!(fusion_order::get_hash(fusion_order) == large_hash, 0);
@@ -456,7 +476,6 @@ module fusion_plus::fusion_order_tests {
         fusion_order::cancel(&owner, fusion_order);
     }
 
-
     #[test]
     fun test_fusion_order_multiple_resolvers() {
         let (owner, _, resolver1, metadata, _) = setup_test();
@@ -464,46 +483,67 @@ module fusion_plus::fusion_order_tests {
         // Add additional resolver
         let resolver2 = account::create_account_for_test(@0x204);
         let fusion_signer = account::create_account_for_test(@fusion_plus);
-        resolver_registry::register_resolver(&fusion_signer, signer::address_of(&resolver2));
-
-        let fusion_order = fusion_order::new(
-            &owner,
-            metadata,
-            ASSET_AMOUNT,
-            CHAIN_ID,
-            hash::sha3_256(TEST_SECRET)
+        resolver_registry::register_resolver(
+            &fusion_signer, signer::address_of(&resolver2)
         );
 
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                metadata,
+                ASSET_AMOUNT,
+                CHAIN_ID,
+                hash::sha3_256(TEST_SECRET)
+            );
+
         // First resolver accepts the order
-        let (asset1, safety_deposit_asset1) = fusion_order::resolver_accept_order(&resolver1, fusion_order);
+        let (asset1, safety_deposit_asset1) =
+            fusion_order::resolver_accept_order(&resolver1, fusion_order);
 
         // Verify assets are received
         assert!(fungible_asset::amount(&asset1) == ASSET_AMOUNT, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset1) == constants::get_safety_deposit_amount(), 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset1)
+                == constants::get_safety_deposit_amount(),
+            0
+        );
 
         // Deposit assets into resolver1
         primary_fungible_store::deposit(signer::address_of(&resolver1), asset1);
-        primary_fungible_store::deposit(signer::address_of(&resolver1), safety_deposit_asset1);
-
-        // Create another order for second resolver
-        let fusion_order2 = fusion_order::new(
-            &owner,
-            metadata,
-            ASSET_AMOUNT * 2,
-            CHAIN_ID,
-            hash::sha3_256(WRONG_SECRET)
+        primary_fungible_store::deposit(
+            signer::address_of(&resolver1), safety_deposit_asset1
         );
 
+        // Create another order for second resolver
+        let fusion_order2 =
+            fusion_order::new(
+                &owner,
+                metadata,
+                ASSET_AMOUNT * 2,
+                CHAIN_ID,
+                hash::sha3_256(WRONG_SECRET)
+            );
+
         // Second resolver accepts the order
-        let (asset2, safety_deposit_asset2) = fusion_order::resolver_accept_order(&resolver2, fusion_order2);
+        let (asset2, safety_deposit_asset2) =
+            fusion_order::resolver_accept_order(&resolver2, fusion_order2);
 
         // Verify assets are received
-        assert!(fungible_asset::amount(&asset2) == ASSET_AMOUNT * 2, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset2) == constants::get_safety_deposit_amount(), 0);
+        assert!(
+            fungible_asset::amount(&asset2) == ASSET_AMOUNT * 2,
+            0
+        );
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset2)
+                == constants::get_safety_deposit_amount(),
+            0
+        );
 
         // Deposit assets into resolver2
         primary_fungible_store::deposit(signer::address_of(&resolver2), asset2);
-        primary_fungible_store::deposit(signer::address_of(&resolver2), safety_deposit_asset2);
+        primary_fungible_store::deposit(
+            signer::address_of(&resolver2), safety_deposit_asset2
+        );
     }
 
     #[test]
@@ -567,17 +607,18 @@ module fusion_plus::fusion_order_tests {
         assert!(object::object_exists<Escrow>(escrow_address) == true, 0);
 
         // Verify escrow object has the assets
-        let escrow_main_balance = primary_fungible_store::balance(
-            escrow_address,
-            metadata
-        );
-        let escrow_safety_deposit_balance = primary_fungible_store::balance(
-            escrow_address,
-            constants::get_safety_deposit_metadata()
-        );
+        let escrow_main_balance =
+            primary_fungible_store::balance(escrow_address, metadata);
+        let escrow_safety_deposit_balance =
+            primary_fungible_store::balance(
+                escrow_address,
+                constants::get_safety_deposit_metadata()
+            );
 
         assert!(escrow_main_balance == ASSET_AMOUNT, 0);
-        assert!(escrow_safety_deposit_balance == constants::get_safety_deposit_amount(), 0);
+        assert!(
+            escrow_safety_deposit_balance == constants::get_safety_deposit_amount(), 0
+        );
 
         // Order cannot be cancelled after pickup/delete
         fusion_order::cancel(&owner, fusion_order);
@@ -604,14 +645,19 @@ module fusion_plus::fusion_order_tests {
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
 
         // Directly call resolver_accept_order
-        let (asset, safety_deposit_asset) = fusion_order::resolver_accept_order(&resolver, fusion_order);
+        let (asset, safety_deposit_asset) =
+            fusion_order::resolver_accept_order(&resolver, fusion_order);
 
         // Verify the fusion order is deleted
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == false, 0);
 
         // Verify we received the correct assets
         assert!(fungible_asset::amount(&asset) == ASSET_AMOUNT, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset) == constants::get_safety_deposit_amount(), 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset)
+                == constants::get_safety_deposit_amount(),
+            0
+        );
 
         // Deposit assets into 0x0
         primary_fungible_store::deposit(@0x0, asset);
@@ -619,13 +665,18 @@ module fusion_plus::fusion_order_tests {
 
         // Verify assets are in 0x0
         let burn_address_main_balance = primary_fungible_store::balance(@0x0, metadata);
-        let burn_address_safety_deposit_balance = primary_fungible_store::balance(
-            @0x0,
-            constants::get_safety_deposit_metadata()
-        );
+        let burn_address_safety_deposit_balance =
+            primary_fungible_store::balance(
+                @0x0,
+                constants::get_safety_deposit_metadata()
+            );
 
         assert!(burn_address_main_balance == ASSET_AMOUNT, 0);
-        assert!(burn_address_safety_deposit_balance == constants::get_safety_deposit_amount(), 0);
+        assert!(
+            burn_address_safety_deposit_balance
+                == constants::get_safety_deposit_amount(),
+            0
+        );
 
         // Order cannot be cancelled after pickup/delete
         fusion_order::cancel(&owner, fusion_order);

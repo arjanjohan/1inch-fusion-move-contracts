@@ -22,7 +22,7 @@ module fusion_plus::resolver_registry {
     /// Event emitted when a new resolver is registered
     struct ResolverRegisteredEvent has drop, store {
         resolver: address,
-        registered_at: u64,
+        registered_at: u64
     }
 
     #[event]
@@ -30,7 +30,7 @@ module fusion_plus::resolver_registry {
     struct ResolverStatusEvent has drop, store {
         resolver: address,
         is_active: bool,
-        changed_at: u64,
+        changed_at: u64
     }
 
     // - - - - STRUCTS - - - -
@@ -60,9 +60,10 @@ module fusion_plus::resolver_registry {
     ///
     /// @param signer The signer of the fusion_plus account.
     fun init_module(signer: &signer) {
-        let resolver_registry = ResolverRegistry {
-            resolvers: table::new<address, Resolver>()
-        };
+        let resolver_registry =
+            ResolverRegistry {
+                resolvers: table::new<address, Resolver>()
+            };
         move_to(signer, resolver_registry);
     }
 
@@ -93,19 +94,12 @@ module fusion_plus::resolver_registry {
 
         // Emit registration event
         event::emit(
-            ResolverRegisteredEvent {
-                resolver: address,
-                registered_at: now,
-            }
+            ResolverRegisteredEvent { resolver: address, registered_at: now }
         );
 
         // Emit initial status event
         event::emit(
-            ResolverStatusEvent {
-                resolver: address,
-                is_active: true,
-                changed_at: now,
-            }
+            ResolverStatusEvent { resolver: address, is_active: true, changed_at: now }
         );
     }
 
@@ -133,11 +127,7 @@ module fusion_plus::resolver_registry {
 
         // Emit status change event
         event::emit(
-            ResolverStatusEvent {
-                resolver: address,
-                is_active: false,
-                changed_at: now,
-            }
+            ResolverStatusEvent { resolver: address, is_active: false, changed_at: now }
         );
     }
 
@@ -165,11 +155,7 @@ module fusion_plus::resolver_registry {
 
         // Emit status change event
         event::emit(
-            ResolverStatusEvent {
-                resolver: address,
-                is_active: true,
-                changed_at: now,
-            }
+            ResolverStatusEvent { resolver: address, is_active: true, changed_at: now }
         );
     }
 
@@ -207,9 +193,7 @@ module fusion_plus::resolver_registry {
         if (table::contains(&resolver_registry.resolvers, address)) {
             let resolver = table::borrow(&resolver_registry.resolvers, address);
             resolver.status
-        } else {
-            false
-        }
+        } else { false }
     }
 
     // - - - - INTERNAL FUNCTIONS - - - -
