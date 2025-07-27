@@ -1,6 +1,6 @@
 # Cross-Chain Atomic Swap Protocol
 
-![Logo](../../assets/logo.png)
+![Logo](assets/logo.png)
 
 A secure cross-chain atomic swap protocol built on Aptos that enables trustless asset swaps across different blockchains. This is the Aptos implementation of the [1inch Fusion Plus](https://github.com/1inch/cross-chain-swap) protocol.
 
@@ -65,7 +65,7 @@ Resolver picks up order           Resolver creates escrow
 
 ### Timelock Phases
 
-![Timelocks](../../assets/timelocks.png)
+![Timelocks](assets/timelocks.png)
 
 1. **Finality Phase**
    - Initial period where settings can be modified
@@ -150,7 +150,7 @@ aptos move publish --named-addresses fusion_plus=YOUR_ACCOUNT_ADDRESS
 Built during the 1inch & ETHGlobal Unite DeFi hackathon by:
 
 <div>
-  <img src="../../assets/milady.jpg" alt="Logo" width="120" height="120" style="border-radius: 50%; object-fit: cover; ">
+  <img src="assets/milady.jpg" alt="Logo" width="120" height="120" style="border-radius: 50%; object-fit: cover; ">
 
   - [arjanjohan](https://x.com/arjanjohan/)
 </div>
