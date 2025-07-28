@@ -1,7 +1,7 @@
 #[test_only]
 module fusion_plus::hashlock_tests {
     use std::vector;
-    use std::hash;
+    use aptos_std::aptos_hash;
     use fusion_plus::hashlock;
 
     // Test constants
@@ -11,7 +11,7 @@ module fusion_plus::hashlock_tests {
 
     #[test]
     fun test_create_hashlock() {
-        let test_hash = hash::sha3_256(TEST_SECRET);
+        let test_hash = aptos_hash::keccak256(TEST_SECRET);
         let hashlock = hashlock::create_hashlock(test_hash);
         assert!(hashlock::get_hash(&hashlock) == test_hash, 0);
     }

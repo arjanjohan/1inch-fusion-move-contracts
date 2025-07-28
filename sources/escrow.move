@@ -22,6 +22,8 @@ module fusion_plus::escrow {
     const EINVALID_AMOUNT: u64 = 4;
     /// Object does not exist
     const EOBJECT_DOES_NOT_EXIST: u64 = 5;
+    /// Invalid hash.
+    const EINVALID_HASH: u64 = 6;
 
     // - - - - EVENTS - - - -
 
@@ -70,6 +72,16 @@ module fusion_plus::escrow {
         delete_ref: DeleteRef
     }
 
+    struct Immutables has store {
+        orderHash: vector<u8>,
+        hashlock: vector<u8>,
+        maker: address,
+        taker: address,
+        asset_metadata: address,
+        amount: u64,
+        safetyDeposit: u64,
+    }
+
     /// An Escrow Object that contains the assets that are being escrowed.
     /// The object can be stored in other structs because it has the `store` ability.
     ///
@@ -94,13 +106,13 @@ module fusion_plus::escrow {
 
     // - - - - ENTRY FUNCTIONS - - - -
 
-    public entry fun new_from_order_entry(
+    public entry fun deploy_source_entry(
         resolver: &signer, fusion_order: Object<FusionOrder>
     ) {
-        new_from_order(resolver, fusion_order);
+        deploy_source(resolver, fusion_order);
     }
 
-    public entry fun new_from_resolver_entry(
+    public entry fun deploy_destination_entry(
         resolver: &signer,
         recipient_address: address,
         metadata: Object<Metadata>,
@@ -108,7 +120,7 @@ module fusion_plus::escrow {
         chain_id: u64,
         hash: vector<u8>
     ) {
-        new_from_resolver(
+        deploy_destination(
             resolver,
             recipient_address,
             metadata,
@@ -127,7 +139,7 @@ module fusion_plus::escrow {
     /// @param fusion_order The fusion order to convert to escrow.
     ///
     /// @return Object<Escrow> The created escrow object.
-    public fun new_from_order(
+    public fun deploy_source(
         resolver: &signer, fusion_order: Object<FusionOrder>
     ): Object<Escrow> {
         let owner_address = fusion_order::get_owner(fusion_order);
@@ -136,7 +148,7 @@ module fusion_plus::escrow {
         let hash = fusion_order::get_hash(fusion_order);
         let (asset, safety_deposit_asset) =
             fusion_order::resolver_accept_order(resolver, fusion_order);
-        new_internal(
+        new(
             resolver,
             asset,
             safety_deposit_asset,
@@ -161,7 +173,7 @@ module fusion_plus::escrow {
     /// @reverts EINVALID_AMOUNT if amount is zero.
     /// @reverts EINSUFFICIENT_BALANCE if resolver has insufficient balance.
     /// @return Object<Escrow> The created escrow object.
-    public fun new_from_resolver(
+    public fun deploy_destination(
         resolver: &signer,
         recipient_address: address,
         metadata: Object<Metadata>,
@@ -173,7 +185,7 @@ module fusion_plus::escrow {
 
         // Validate inputs
         assert!(amount > 0, EINVALID_AMOUNT);
-        assert!(hashlock::is_valid_hash(&hash), EINVALID_SECRET);
+        assert!(hashlock::is_valid_hash(&hash), EINVALID_HASH);
 
         let asset = primary_fungible_store::withdraw(resolver, metadata, amount);
 
@@ -183,7 +195,7 @@ module fusion_plus::escrow {
                 constants::get_safety_deposit_metadata(),
                 constants::get_safety_deposit_amount()
             );
-        new_internal(
+        new(
             resolver,
             asset,
             safety_deposit_asset,
@@ -207,7 +219,7 @@ module fusion_plus::escrow {
     /// @param hash The hash of the secret for the cross-chain swap.
     ///
     /// @return Object<Escrow> The created escrow object.
-    fun new_internal(
+    fun new(
         signer: &signer,
         asset: FungibleAsset,
         safety_deposit_asset: FungibleAsset,
@@ -408,8 +420,9 @@ module fusion_plus::escrow {
         );
     }
 
-    // - - - - GETTER FUNCTIONS - - - -
+    // - - - - VIEW FUNCTIONS - - - -
 
+    #[view]
     /// Gets the metadata of the asset in an escrow.
     ///
     /// @param escrow The escrow to get the metadata from.
@@ -419,6 +432,7 @@ module fusion_plus::escrow {
         escrow_ref.metadata
     }
 
+    #[view]
     /// Gets the amount of the asset in an escrow.
     ///
     /// @param escrow The escrow to get the amount from.
@@ -428,6 +442,7 @@ module fusion_plus::escrow {
         escrow_ref.amount
     }
 
+    #[view]
     /// Gets the 'from' address of an escrow.
     ///
     /// @param escrow The escrow to get the 'from' address from.
@@ -437,6 +452,7 @@ module fusion_plus::escrow {
         escrow_ref.from
     }
 
+    #[view]
     /// Gets the 'to' address of an escrow.
     ///
     /// @param escrow The escrow to get the 'to' address from.
@@ -446,6 +462,7 @@ module fusion_plus::escrow {
         escrow_ref.to
     }
 
+    #[view]
     /// Gets the resolver address of an escrow.
     ///
     /// @param escrow The escrow to get the resolver from.
@@ -455,6 +472,7 @@ module fusion_plus::escrow {
         escrow_ref.resolver
     }
 
+    #[view]
     /// Gets the chain ID of an escrow.
     ///
     /// @param escrow The escrow to get the chain ID from.
@@ -464,6 +482,7 @@ module fusion_plus::escrow {
         escrow_ref.chain_id
     }
 
+    #[view]
     /// Gets the timelock of an escrow.
     ///
     /// @param escrow The escrow to get the timelock from.
@@ -473,6 +492,7 @@ module fusion_plus::escrow {
         escrow_ref.timelock
     }
 
+    #[view]
     /// Gets the hashlock of an escrow.
     ///
     /// @param escrow The escrow to get the hashlock from.
@@ -482,6 +502,7 @@ module fusion_plus::escrow {
         escrow_ref.hashlock
     }
 
+    #[view]
     /// Checks if an escrow is on the source chain.
     ///
     /// @param escrow The escrow to check.
@@ -489,6 +510,23 @@ module fusion_plus::escrow {
     public fun is_source_chain(escrow: Object<Escrow>): bool acquires Escrow {
         let escrow_ref = borrow_escrow(&escrow);
         escrow_ref.to == escrow_ref.resolver
+    }
+
+    #[view]
+    /// Test function to verify a secret against the hashlock.
+    ///
+    /// @param escrow The escrow to verify the secret against.
+    /// @param secret The secret to verify.
+    ///
+    /// @reverts EOBJECT_DOES_NOT_EXIST if the escrow does not exist.
+    /// @return bool True if the secret matches the hashlock, false otherwise.
+    public fun verify_secret(
+        escrow: Object<Escrow>, secret: vector<u8>
+    ) : bool acquires Escrow {
+        assert!(escrow_exists(escrow), EOBJECT_DOES_NOT_EXIST);
+        let escrow_ref = borrow_escrow(&escrow);
+
+        hashlock::verify_hashlock(&escrow_ref.hashlock, secret)
     }
 
     // - - - - UTILITY FUNCTIONS - - - -

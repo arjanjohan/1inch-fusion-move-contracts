@@ -7,6 +7,7 @@ module fusion_plus::fusion_order {
 
     use fusion_plus::constants;
     use fusion_plus::resolver_registry;
+    use fusion_plus::hashlock;
 
     friend fusion_plus::escrow;
 
@@ -132,7 +133,7 @@ module fusion_plus::fusion_order {
         // Validate inputs
         assert!(amount > 0, EINVALID_AMOUNT);
         assert!(safety_deposit_amount > 0, EINVALID_AMOUNT);
-        assert!(is_valid_hash(&hash), EINVALID_HASH);
+        assert!(hashlock::is_valid_hash(&hash), EINVALID_HASH);
         assert!(
             primary_fungible_store::balance(signer_address, metadata) >= amount,
             EINSUFFICIENT_BALANCE
@@ -395,7 +396,7 @@ module fusion_plus::fusion_order {
     /// @param hash The hash value to check.
     /// @return bool True if the hash is valid, false otherwise.
     public fun is_valid_hash(hash: &vector<u8>): bool {
-        std::vector::length(hash) > 0
+        hashlock::is_valid_hash(hash)
     }
 
     /// Checks if a fusion order exists.

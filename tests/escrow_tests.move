@@ -1,6 +1,6 @@
 #[test_only]
 module fusion_plus::escrow_tests {
-    use std::hash;
+    use aptos_std::aptos_hash;
     use std::signer;
     use std::vector;
     use aptos_framework::account;
@@ -65,7 +65,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -128,7 +128,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let escrow_address = object::object_address(&escrow);
@@ -190,7 +190,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let fusion_order2 =
@@ -199,7 +199,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT * 2,
                 CHAIN_ID,
-                hash::sha3_256(WRONG_SECRET)
+                aptos_hash::keccak256(WRONG_SECRET)
             );
 
         // Convert both to escrow
@@ -237,7 +237,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let escrow2 =
@@ -247,7 +247,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT * 2,
                 CHAIN_ID,
-                hash::sha3_256(WRONG_SECRET)
+                aptos_hash::keccak256(WRONG_SECRET)
             );
 
         // Verify escrow properties
@@ -281,7 +281,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 large_amount,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Verify escrow properties
@@ -314,7 +314,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Verify timelock is active
@@ -338,7 +338,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let timelock = escrow::get_timelock(escrow);
@@ -380,7 +380,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let escrow_address = object::object_address(&escrow);
@@ -420,7 +420,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -456,7 +456,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Convert to escrow
@@ -515,7 +515,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Convert to escrow
@@ -544,7 +544,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Convert to escrow
@@ -566,7 +566,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Convert to escrow
@@ -597,7 +597,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Fast forward to exclusive phase
@@ -653,12 +653,12 @@ module fusion_plus::escrow_tests {
             metadata,
             0, // Zero amount should fail
             CHAIN_ID,
-            hash::sha3_256(TEST_SECRET)
+            aptos_hash::keccak256(TEST_SECRET)
         );
     }
 
     #[test]
-    #[expected_failure(abort_code = escrow::EINVALID_SECRET)]
+    #[expected_failure(abort_code = escrow::EINVALID_HASH)]
     fun test_destination_chain_escrow_invalid_hash() {
         let (_, recipient, resolver, metadata, _) = setup_test();
 
@@ -686,7 +686,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
         let escrow = escrow::new_from_order(&resolver, fusion_order);
 
@@ -745,7 +745,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Fast forward to public cancellation phase
@@ -802,7 +802,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
         let escrow = escrow::new_from_order(&resolver, fusion_order);
 
@@ -831,7 +831,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
         let escrow = escrow::new_from_order(&resolver, fusion_order);
 
@@ -852,7 +852,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Test is_source_chain for destination chain scenario
@@ -865,7 +865,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
         let source_chain_escrow = escrow::new_from_order(&resolver, fusion_order);
         assert!(escrow::is_source_chain(source_chain_escrow) == true, 0); // resolver == to
@@ -890,7 +890,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 large_amount,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Fast forward to exclusive phase
@@ -928,7 +928,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let escrow2 =
@@ -938,7 +938,7 @@ module fusion_plus::escrow_tests {
                 metadata,
                 ASSET_AMOUNT * 2,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Fast forward to exclusive phase for both

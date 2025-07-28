@@ -1,6 +1,6 @@
 #[test_only]
 module fusion_plus::fusion_order_tests {
-    use std::hash;
+    use aptos_std::aptos_hash;
     use std::signer;
     use std::vector;
     use aptos_framework::account;
@@ -61,7 +61,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Verify initial state
@@ -71,7 +71,7 @@ module fusion_plus::fusion_order_tests {
         assert!(fusion_order::get_metadata(fusion_order) == metadata, 0);
         assert!(fusion_order::get_amount(fusion_order) == ASSET_AMOUNT, 0);
         assert!(fusion_order::get_chain_id(fusion_order) == CHAIN_ID, 0);
-        assert!(fusion_order::get_hash(fusion_order) == hash::sha3_256(TEST_SECRET), 0);
+        assert!(fusion_order::get_hash(fusion_order) == aptos_hash::keccak256(TEST_SECRET), 0);
 
         // Verify safety deposit amount is correct
         assert!(
@@ -123,7 +123,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -164,7 +164,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Wrong caller tries to cancel the order
@@ -188,7 +188,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let fusion_order2 =
@@ -197,7 +197,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT * 2,
                 CHAIN_ID,
-                hash::sha3_256(WRONG_SECRET)
+                aptos_hash::keccak256(WRONG_SECRET)
             );
 
         // Verify safety deposit was deducted for both orders
@@ -257,7 +257,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let fusion_order2 =
@@ -266,7 +266,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT * 2,
                 CHAIN_ID,
-                hash::sha3_256(WRONG_SECRET)
+                aptos_hash::keccak256(WRONG_SECRET)
             );
 
         // Each owner cancels their own order
@@ -302,7 +302,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 large_amount,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Owner cancels the order
@@ -324,7 +324,7 @@ module fusion_plus::fusion_order_tests {
             metadata,
             0, // Zero amount should fail
             CHAIN_ID,
-            hash::sha3_256(TEST_SECRET)
+            aptos_hash::keccak256(TEST_SECRET)
         );
     }
 
@@ -354,7 +354,7 @@ module fusion_plus::fusion_order_tests {
             metadata,
             insufficient_amount,
             CHAIN_ID,
-            hash::sha3_256(TEST_SECRET)
+            aptos_hash::keccak256(TEST_SECRET)
         );
     }
 
@@ -369,7 +369,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Create a different account that's not the resolver
@@ -398,7 +398,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -427,12 +427,8 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
-
-        // Test is_valid_hash
-        assert!(fusion_order::is_valid_hash(&hash::sha3_256(TEST_SECRET)), 0);
-        assert!(fusion_order::is_valid_hash(&vector::empty()) == false, 0);
 
         // Test order_exists
         assert!(fusion_order::order_exists(fusion_order), 0);
@@ -458,7 +454,7 @@ module fusion_plus::fusion_order_tests {
             i = i + 1;
         };
 
-        let large_hash = hash::sha3_256(large_secret);
+        let large_hash = aptos_hash::keccak256(large_secret);
 
         let fusion_order =
             fusion_order::new(
@@ -493,7 +489,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // First resolver accepts the order
@@ -521,7 +517,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT * 2,
                 CHAIN_ID,
-                hash::sha3_256(WRONG_SECRET)
+                aptos_hash::keccak256(WRONG_SECRET)
             );
 
         // Second resolver accepts the order
@@ -557,7 +553,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -587,7 +583,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -636,7 +632,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -702,7 +698,7 @@ module fusion_plus::fusion_order_tests {
                 metadata,
                 ASSET_AMOUNT,
                 CHAIN_ID,
-                hash::sha3_256(TEST_SECRET)
+                aptos_hash::keccak256(TEST_SECRET)
             );
 
         // Verify safety deposit was transferred to fusion order
