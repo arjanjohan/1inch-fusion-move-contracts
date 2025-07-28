@@ -68,8 +68,7 @@ module fusion_plus::hashlock {
     /// @param hash The hash value to check.
     /// @return bool True if the hash is valid, false otherwise.
     public fun is_valid_hash(hash: &vector<u8>): bool {
-        std::vector::length(hash) > 0
-        // vector::length(hash) == HASH_LENGTH
+        vector::length(hash) == HASH_LENGTH
     }
 
     /// Checks if a secret is valid (non-empty).

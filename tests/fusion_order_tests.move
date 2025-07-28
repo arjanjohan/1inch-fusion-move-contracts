@@ -9,21 +9,25 @@ module fusion_plus::fusion_order_tests {
     use aptos_framework::primary_fungible_store;
     use aptos_framework::timestamp;
     use fusion_plus::fusion_order::{Self, FusionOrder};
-    use fusion_plus::common;
-    use fusion_plus::constants;
+    use fusion_plus::common::{Self, safety_deposit_metadata};
+
     use fusion_plus::resolver_registry;
     use fusion_plus::escrow::{Self, Escrow};
 
-    // Test accounts
-    const CHAIN_ID: u64 = 20;
-
     // Test amounts
-    const MINT_AMOUNT: u64 = 100000000; // 100 token
-    const ASSET_AMOUNT: u64 = 1000000; // 1 token
+    const MINT_AMOUNT: u64 = 10000000000; // 100 token
+    const ASSET_AMOUNT: u64 = 100000000; // 1 token
+    const SAFETY_DEPOSIT_AMOUNT: u64 = 100; // 0.000001 token
 
     // Test secrets and hashes
     const TEST_SECRET: vector<u8> = b"my secret";
     const WRONG_SECRET: vector<u8> = b"wrong secret";
+
+    // Test order parameters
+    const ORDER_HASH: vector<u8> = b"order_hash_123";
+    const FINALITY_DURATION: u64 = 3600; // 1 hour
+    const EXCLUSIVE_DURATION: u64 = 1800; // 30 minutes
+    const PRIVATE_CANCELLATION_DURATION: u64 = 900; // 15 minutes
 
     fun setup_test(): (signer, signer, signer, Object<Metadata>, MintRef) {
         timestamp::set_time_has_started_for_testing(
@@ -44,6 +48,7 @@ module fusion_plus::fusion_order_tests {
             &fusion_signer, b"Test Token"
         );
 
+
         common::mint_fa(&mint_ref, MINT_AMOUNT, signer::address_of(&account_1));
         common::mint_fa(&mint_ref, MINT_AMOUNT, signer::address_of(&account_2));
         common::mint_fa(&mint_ref, MINT_AMOUNT, signer::address_of(&resolver));
@@ -58,31 +63,37 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &account_1,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Verify initial state
         assert!(
-            fusion_order::get_owner(fusion_order) == signer::address_of(&account_1), 0
+            fusion_order::get_maker(fusion_order) == signer::address_of(&account_1), 0
         );
         assert!(fusion_order::get_metadata(fusion_order) == metadata, 0);
         assert!(fusion_order::get_amount(fusion_order) == ASSET_AMOUNT, 0);
-        assert!(fusion_order::get_chain_id(fusion_order) == CHAIN_ID, 0);
+        assert!(fusion_order::get_order_hash(fusion_order) == ORDER_HASH, 0);
         assert!(fusion_order::get_hash(fusion_order) == aptos_hash::keccak256(TEST_SECRET), 0);
 
         // Verify safety deposit amount is correct
         assert!(
-            fusion_order::get_safety_deposit_amount(fusion_order)
-                == constants::get_safety_deposit_amount(),
-            0
+            fusion_order::get_safety_deposit_amount(fusion_order) == SAFETY_DEPOSIT_AMOUNT, 0
         );
         assert!(
-            fusion_order::get_safety_deposit_metadata(fusion_order)
-                == constants::get_safety_deposit_metadata(),
-            0
+            fusion_order::get_finality_duration(fusion_order) == FINALITY_DURATION, 0
+        );
+        assert!(
+            fusion_order::get_exclusive_duration(fusion_order) == EXCLUSIVE_DURATION, 0
+        );
+        assert!(
+            fusion_order::get_private_cancellation_duration(fusion_order) == PRIVATE_CANCELLATION_DURATION, 0
         );
 
         // Verify the object exists
@@ -97,11 +108,9 @@ module fusion_plus::fusion_order_tests {
         let object_safety_deposit_balance =
             primary_fungible_store::balance(
                 fusion_order_address,
-                constants::get_safety_deposit_metadata()
+                safety_deposit_metadata()
             );
-        assert!(
-            object_safety_deposit_balance == constants::get_safety_deposit_amount(), 0
-        );
+        assert!(object_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT, 0);
     }
 
     #[test]
@@ -114,16 +123,20 @@ module fusion_plus::fusion_order_tests {
         let initial_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&owner),
-                constants::get_safety_deposit_metadata()
+                safety_deposit_metadata()
             );
 
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -146,7 +159,7 @@ module fusion_plus::fusion_order_tests {
         let final_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&owner),
-                constants::get_safety_deposit_metadata()
+                safety_deposit_metadata()
             );
         assert!(final_safety_deposit_balance == initial_safety_deposit_balance, 0);
     }
@@ -161,10 +174,14 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Wrong caller tries to cancel the order
@@ -179,37 +196,46 @@ module fusion_plus::fusion_order_tests {
         let initial_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&owner),
-                constants::get_safety_deposit_metadata()
+                safety_deposit_metadata()
             );
 
         let fusion_order1 =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
+        let order_hash2: vector<u8> = b"order_hash_456";
         let fusion_order2 =
             fusion_order::new(
                 &owner,
+                order_hash2,
+                aptos_hash::keccak256(WRONG_SECRET),
                 metadata,
                 ASSET_AMOUNT * 2,
-                CHAIN_ID,
-                aptos_hash::keccak256(WRONG_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Verify safety deposit was deducted for both orders
         let safety_deposit_after_creation =
             primary_fungible_store::balance(
                 signer::address_of(&owner),
-                constants::get_safety_deposit_metadata()
+                safety_deposit_metadata()
             );
         assert!(
             safety_deposit_after_creation
                 == initial_safety_deposit_balance
-                    - constants::get_safety_deposit_amount() * 2,
+                    - SAFETY_DEPOSIT_AMOUNT * 2,
             0
         );
 
@@ -220,12 +246,12 @@ module fusion_plus::fusion_order_tests {
         let safety_deposit_after_first_cancel =
             primary_fungible_store::balance(
                 signer::address_of(&owner),
-                constants::get_safety_deposit_metadata()
+                safety_deposit_metadata()
             );
         assert!(
             safety_deposit_after_first_cancel
                 == safety_deposit_after_creation
-                    + constants::get_safety_deposit_amount(),
+                    + SAFETY_DEPOSIT_AMOUNT,
             0
         );
 
@@ -236,7 +262,7 @@ module fusion_plus::fusion_order_tests {
         let final_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&owner),
-                constants::get_safety_deposit_metadata()
+                safety_deposit_metadata()
             );
         assert!(final_safety_deposit_balance == initial_safety_deposit_balance, 0);
     }
@@ -254,19 +280,28 @@ module fusion_plus::fusion_order_tests {
         let fusion_order1 =
             fusion_order::new(
                 &owner1,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
+        let order_hash2: vector<u8> = b"order_hash_456";
         let fusion_order2 =
             fusion_order::new(
                 &owner2,
+                order_hash2,
+                aptos_hash::keccak256(WRONG_SECRET),
                 metadata,
                 ASSET_AMOUNT * 2,
-                CHAIN_ID,
-                aptos_hash::keccak256(WRONG_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Each owner cancels their own order
@@ -299,10 +334,14 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 large_amount,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Owner cancels the order
@@ -321,10 +360,14 @@ module fusion_plus::fusion_order_tests {
 
         fusion_order::new(
             &owner,
+            ORDER_HASH,
+            aptos_hash::keccak256(TEST_SECRET),
             metadata,
             0, // Zero amount should fail
-            CHAIN_ID,
-            aptos_hash::keccak256(TEST_SECRET)
+            SAFETY_DEPOSIT_AMOUNT,
+            FINALITY_DURATION,
+            EXCLUSIVE_DURATION,
+            PRIVATE_CANCELLATION_DURATION
         );
     }
 
@@ -335,10 +378,14 @@ module fusion_plus::fusion_order_tests {
 
         fusion_order::new(
             &owner,
+            ORDER_HASH,
+            vector::empty(), // Empty hash should fail
             metadata,
             ASSET_AMOUNT,
-            CHAIN_ID,
-            vector::empty() // Empty hash should fail
+            SAFETY_DEPOSIT_AMOUNT,
+            FINALITY_DURATION,
+            EXCLUSIVE_DURATION,
+            PRIVATE_CANCELLATION_DURATION
         );
     }
 
@@ -351,10 +398,14 @@ module fusion_plus::fusion_order_tests {
 
         fusion_order::new(
             &owner,
+            ORDER_HASH,
+            aptos_hash::keccak256(TEST_SECRET),
             metadata,
             insufficient_amount,
-            CHAIN_ID,
-            aptos_hash::keccak256(TEST_SECRET)
+            SAFETY_DEPOSIT_AMOUNT,
+            FINALITY_DURATION,
+            EXCLUSIVE_DURATION,
+            PRIVATE_CANCELLATION_DURATION
         );
     }
 
@@ -366,10 +417,14 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Create a different account that's not the resolver
@@ -395,10 +450,14 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -424,18 +483,22 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Test order_exists
         assert!(fusion_order::order_exists(fusion_order), 0);
 
-        // Test is_owner
-        assert!(fusion_order::is_owner(fusion_order, signer::address_of(&owner)), 0);
-        assert!(fusion_order::is_owner(fusion_order, @0x999) == false, 0);
+        // Test is_maker
+        assert!(fusion_order::is_maker(fusion_order, signer::address_of(&owner)), 0);
+        assert!(fusion_order::is_maker(fusion_order, @0x999) == false, 0);
 
         // Test with deleted order
         fusion_order::delete_for_test(fusion_order);
@@ -459,10 +522,14 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                large_hash,
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                large_hash
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Verify the hash is stored correctly
@@ -486,10 +553,14 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // First resolver accepts the order
@@ -499,9 +570,7 @@ module fusion_plus::fusion_order_tests {
         // Verify assets are received
         assert!(fungible_asset::amount(&asset1) == ASSET_AMOUNT, 0);
         assert!(
-            fungible_asset::amount(&safety_deposit_asset1)
-                == constants::get_safety_deposit_amount(),
-            0
+            fungible_asset::amount(&safety_deposit_asset1) == SAFETY_DEPOSIT_AMOUNT, 0
         );
 
         // Deposit assets into resolver1
@@ -510,14 +579,20 @@ module fusion_plus::fusion_order_tests {
             signer::address_of(&resolver1), safety_deposit_asset1
         );
 
+
+        let order_hash2: vector<u8> = b"order_hash_456";
         // Create another order for second resolver
         let fusion_order2 =
             fusion_order::new(
                 &owner,
+                order_hash2,
+                aptos_hash::keccak256(WRONG_SECRET),
                 metadata,
                 ASSET_AMOUNT * 2,
-                CHAIN_ID,
-                aptos_hash::keccak256(WRONG_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Second resolver accepts the order
@@ -530,9 +605,7 @@ module fusion_plus::fusion_order_tests {
             0
         );
         assert!(
-            fungible_asset::amount(&safety_deposit_asset2)
-                == constants::get_safety_deposit_amount(),
-            0
+            fungible_asset::amount(&safety_deposit_asset2) == SAFETY_DEPOSIT_AMOUNT, 0
         );
 
         // Deposit assets into resolver2
@@ -550,10 +623,14 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -580,10 +657,14 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -592,7 +673,7 @@ module fusion_plus::fusion_order_tests {
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
 
         // Simulate order pickup using escrow::new_from_order
-        let escrow = escrow::new_from_order(&resolver, fusion_order);
+        let escrow = escrow::deploy_source(&resolver, fusion_order);
 
         let escrow_address = object::object_address(&escrow);
 
@@ -608,13 +689,11 @@ module fusion_plus::fusion_order_tests {
         let escrow_safety_deposit_balance =
             primary_fungible_store::balance(
                 escrow_address,
-                constants::get_safety_deposit_metadata()
+                safety_deposit_metadata()
             );
 
         assert!(escrow_main_balance == ASSET_AMOUNT, 0);
-        assert!(
-            escrow_safety_deposit_balance == constants::get_safety_deposit_amount(), 0
-        );
+        assert!(escrow_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT, 0);
 
         // Order cannot be cancelled after pickup/delete
         fusion_order::cancel(&owner, fusion_order);
@@ -629,10 +708,14 @@ module fusion_plus::fusion_order_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -651,7 +734,7 @@ module fusion_plus::fusion_order_tests {
         assert!(fungible_asset::amount(&asset) == ASSET_AMOUNT, 0);
         assert!(
             fungible_asset::amount(&safety_deposit_asset)
-                == constants::get_safety_deposit_amount(),
+                == SAFETY_DEPOSIT_AMOUNT,
             0
         );
 
@@ -664,13 +747,13 @@ module fusion_plus::fusion_order_tests {
         let burn_address_safety_deposit_balance =
             primary_fungible_store::balance(
                 @0x0,
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
 
         assert!(burn_address_main_balance == ASSET_AMOUNT, 0);
         assert!(
             burn_address_safety_deposit_balance
-                == constants::get_safety_deposit_amount(),
+                == SAFETY_DEPOSIT_AMOUNT,
             0
         );
 
@@ -689,16 +772,20 @@ module fusion_plus::fusion_order_tests {
         let initial_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&owner),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
 
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Verify safety deposit was transferred to fusion order
@@ -706,20 +793,20 @@ module fusion_plus::fusion_order_tests {
         let safety_deposit_at_object =
             primary_fungible_store::balance(
                 fusion_order_address,
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
-        assert!(safety_deposit_at_object == constants::get_safety_deposit_amount(), 0);
+        assert!(safety_deposit_at_object == SAFETY_DEPOSIT_AMOUNT, 0);
 
         // Verify owner's safety deposit balance decreased
         let owner_safety_deposit_after_creation =
             primary_fungible_store::balance(
                 signer::address_of(&owner),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
         assert!(
             owner_safety_deposit_after_creation
                 == initial_safety_deposit_balance
-                    - constants::get_safety_deposit_amount(),
+                    - SAFETY_DEPOSIT_AMOUNT,
             0
         );
 
@@ -730,7 +817,7 @@ module fusion_plus::fusion_order_tests {
         let final_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&owner),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
         assert!(final_safety_deposit_balance == initial_safety_deposit_balance, 0);
     }

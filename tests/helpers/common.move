@@ -39,4 +39,8 @@ module fusion_plus::common {
         let fa = fungible_asset::mint(mint_ref, amount);
         primary_fungible_store::deposit(address, fa);
     }
+
+    public fun safety_deposit_metadata(): Object<Metadata> {
+        object::address_to_object<Metadata>(@0xa)
+    }
 }

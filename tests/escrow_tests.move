@@ -11,21 +11,24 @@ module fusion_plus::escrow_tests {
     use fusion_plus::escrow::{Self, Escrow};
     use fusion_plus::fusion_order::{Self, FusionOrder};
     use fusion_plus::common;
-    use fusion_plus::constants;
     use fusion_plus::resolver_registry;
     use fusion_plus::timelock::{Self};
     use fusion_plus::hashlock::{Self};
 
-    // Test accounts
-    const CHAIN_ID: u64 = 20;
-
     // Test amounts
-    const MINT_AMOUNT: u64 = 100000000; // 100 token
-    const ASSET_AMOUNT: u64 = 1000000; // 1 token
+    const MINT_AMOUNT: u64 = 10000000000; // 100 token
+    const ASSET_AMOUNT: u64 = 100000000; // 1 token
+    const SAFETY_DEPOSIT_AMOUNT: u64 = 100; // 0.000001 token
 
     // Test secrets and hashes
     const TEST_SECRET: vector<u8> = b"my secret";
     const WRONG_SECRET: vector<u8> = b"wrong secret";
+
+    // Test order parameters
+    const ORDER_HASH: vector<u8> = b"order_hash_123";
+    const FINALITY_DURATION: u64 = 3600; // 1 hour
+    const EXCLUSIVE_DURATION: u64 = 1800; // 30 minutes
+    const PRIVATE_CANCELLATION_DURATION: u64 = 900; // 15 minutes
 
     fun setup_test(): (signer, signer, signer, Object<Metadata>, MintRef) {
         timestamp::set_time_has_started_for_testing(
@@ -62,10 +65,14 @@ module fusion_plus::escrow_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         let fusion_order_address = object::object_address(&fusion_order);
@@ -74,7 +81,7 @@ module fusion_plus::escrow_tests {
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
 
         // Create escrow from fusion order
-        let escrow = escrow::new_from_order(&resolver, fusion_order);
+        let escrow = escrow::deploy_source(&resolver, fusion_order);
 
         let escrow_address = object::object_address(&escrow);
 
@@ -85,12 +92,16 @@ module fusion_plus::escrow_tests {
         assert!(object::object_exists<Escrow>(escrow_address) == true, 0);
 
         // Verify escrow properties
+        assert!(escrow::get_order_hash(escrow) == ORDER_HASH, 0);
         assert!(escrow::get_metadata(escrow) == metadata, 0);
         assert!(escrow::get_amount(escrow) == ASSET_AMOUNT, 0);
-        assert!(escrow::get_from(escrow) == signer::address_of(&owner), 0);
-        assert!(escrow::get_to(escrow) == signer::address_of(&resolver), 0);
-        assert!(escrow::get_resolver(escrow) == signer::address_of(&resolver), 0);
-        assert!(escrow::get_chain_id(escrow) == CHAIN_ID, 0);
+        assert!(escrow::get_safety_deposit_amount(escrow) == SAFETY_DEPOSIT_AMOUNT, 0);
+        assert!(escrow::get_maker(escrow) == signer::address_of(&owner), 0);
+        assert!(escrow::get_taker(escrow) == signer::address_of(&resolver), 0);
+        assert!(escrow::get_hash(escrow) == aptos_hash::keccak256(TEST_SECRET), 0);
+        assert!(escrow::get_finality_duration(escrow) == FINALITY_DURATION, 0);
+        assert!(escrow::get_exclusive_duration(escrow) == EXCLUSIVE_DURATION, 0);
+        assert!(escrow::get_private_cancellation_duration(escrow) == PRIVATE_CANCELLATION_DURATION, 0);
 
         // Verify assets are in escrow
         let escrow_main_balance =
@@ -100,10 +111,10 @@ module fusion_plus::escrow_tests {
         let escrow_safety_deposit_balance =
             primary_fungible_store::balance(
                 escrow_address,
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
         assert!(
-            escrow_safety_deposit_balance == constants::get_safety_deposit_amount(), 0
+            escrow_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT, 0
         );
     }
 
@@ -117,18 +128,23 @@ module fusion_plus::escrow_tests {
         let initial_resolver_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&resolver),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
 
         // Create escrow directly from resolver
         let escrow =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         let escrow_address = object::object_address(&escrow);
@@ -139,10 +155,9 @@ module fusion_plus::escrow_tests {
         // Verify escrow properties
         assert!(escrow::get_metadata(escrow) == metadata, 0);
         assert!(escrow::get_amount(escrow) == ASSET_AMOUNT, 0);
-        assert!(escrow::get_from(escrow) == signer::address_of(&resolver), 0);
-        assert!(escrow::get_to(escrow) == signer::address_of(&recipient), 0);
-        assert!(escrow::get_resolver(escrow) == signer::address_of(&resolver), 0);
-        assert!(escrow::get_chain_id(escrow) == CHAIN_ID, 0);
+        assert!(escrow::get_maker(escrow) == signer::address_of(&resolver), 0);
+        assert!(escrow::get_taker(escrow) == signer::address_of(&recipient), 0);
+
 
         // Verify resolver's balances decreased
         let final_resolver_main_balance =
@@ -150,7 +165,7 @@ module fusion_plus::escrow_tests {
         let final_resolver_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&resolver),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
 
         assert!(
@@ -160,7 +175,7 @@ module fusion_plus::escrow_tests {
         assert!(
             final_resolver_safety_deposit_balance
                 == initial_resolver_safety_deposit_balance
-                    - constants::get_safety_deposit_amount(),
+                    - SAFETY_DEPOSIT_AMOUNT,
             0
         );
 
@@ -172,10 +187,10 @@ module fusion_plus::escrow_tests {
         let escrow_safety_deposit_balance =
             primary_fungible_store::balance(
                 escrow_address,
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
         assert!(
-            escrow_safety_deposit_balance == constants::get_safety_deposit_amount(), 0
+            escrow_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT, 0
         );
     }
 
@@ -187,24 +202,33 @@ module fusion_plus::escrow_tests {
         let fusion_order1 =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
+        let order_hash2: vector<u8> = b"order_hash_456";
         let fusion_order2 =
             fusion_order::new(
                 &owner,
+                order_hash2,
+                aptos_hash::keccak256(WRONG_SECRET),
                 metadata,
                 ASSET_AMOUNT * 2,
-                CHAIN_ID,
-                aptos_hash::keccak256(WRONG_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Convert both to escrow
-        let escrow1 = escrow::new_from_order(&resolver, fusion_order1);
-        let escrow2 = escrow::new_from_order(&resolver, fusion_order2);
+        let escrow1 = escrow::deploy_source(&resolver, fusion_order1);
+        let escrow2 = escrow::deploy_source(&resolver, fusion_order2);
 
         let escrow1_address = object::object_address(&escrow1);
         let escrow2_address = object::object_address(&escrow2);
@@ -219,10 +243,10 @@ module fusion_plus::escrow_tests {
             escrow::get_amount(escrow2) == ASSET_AMOUNT * 2,
             0
         );
-        assert!(escrow::get_from(escrow1) == signer::address_of(&owner), 0);
-        assert!(escrow::get_from(escrow2) == signer::address_of(&owner), 0);
-        assert!(escrow::get_to(escrow1) == signer::address_of(&resolver), 0);
-        assert!(escrow::get_to(escrow2) == signer::address_of(&resolver), 0);
+        assert!(escrow::get_maker(escrow1) == signer::address_of(&owner), 0);
+        assert!(escrow::get_maker(escrow2) == signer::address_of(&owner), 0);
+        assert!(escrow::get_taker(escrow1) == signer::address_of(&resolver), 0);
+        assert!(escrow::get_taker(escrow2) == signer::address_of(&resolver), 0);
     }
 
     #[test]
@@ -231,33 +255,42 @@ module fusion_plus::escrow_tests {
 
         // Create escrows with different recipients
         let escrow1 =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient1),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
+        let order_hash2: vector<u8> = b"order_hash_456";
         let escrow2 =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                order_hash2,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient2),
                 metadata,
                 ASSET_AMOUNT * 2,
-                CHAIN_ID,
-                aptos_hash::keccak256(WRONG_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Verify escrow properties
-        assert!(escrow::get_to(escrow1) == signer::address_of(&recipient1), 0);
-        assert!(escrow::get_to(escrow2) == signer::address_of(&recipient2), 0);
+        assert!(escrow::get_taker(escrow1) == signer::address_of(&recipient1), 0);
+        assert!(escrow::get_taker(escrow2) == signer::address_of(&recipient2), 0);
         assert!(escrow::get_amount(escrow1) == ASSET_AMOUNT, 0);
-        assert!(
-            escrow::get_amount(escrow2) == ASSET_AMOUNT * 2,
-            0
-        );
+        assert!(escrow::get_amount(escrow2) == ASSET_AMOUNT * 2, 0);
+
     }
 
     #[test]
@@ -275,19 +308,24 @@ module fusion_plus::escrow_tests {
 
         // Create escrow with large amount
         let escrow =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 large_amount,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Verify escrow properties
         assert!(escrow::get_amount(escrow) == large_amount, 0);
-        assert!(escrow::get_from(escrow) == signer::address_of(&resolver), 0);
-        assert!(escrow::get_to(escrow) == signer::address_of(&recipient), 0);
+        assert!(escrow::get_maker(escrow) == signer::address_of(&resolver), 0);
+        assert!(escrow::get_taker(escrow) == signer::address_of(&recipient), 0);
 
         // Verify resolver's balance decreased
         let final_resolver_balance =
@@ -308,13 +346,18 @@ module fusion_plus::escrow_tests {
         let (_, recipient, resolver, metadata, _) = setup_test();
 
         let escrow =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Verify timelock is active
@@ -332,13 +375,18 @@ module fusion_plus::escrow_tests {
         let (_, recipient, resolver, metadata, _) = setup_test();
 
         let escrow =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         let timelock = escrow::get_timelock(escrow);
@@ -370,17 +418,22 @@ module fusion_plus::escrow_tests {
         let initial_resolver_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&resolver),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
 
         let escrow =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         let escrow_address = object::object_address(&escrow);
@@ -389,12 +442,12 @@ module fusion_plus::escrow_tests {
         let final_resolver_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&resolver),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
         assert!(
             final_resolver_safety_deposit_balance
                 == initial_resolver_safety_deposit_balance
-                    - constants::get_safety_deposit_amount(),
+                    - SAFETY_DEPOSIT_AMOUNT,
             0
         );
 
@@ -402,10 +455,10 @@ module fusion_plus::escrow_tests {
         let escrow_safety_deposit_balance =
             primary_fungible_store::balance(
                 escrow_address,
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
         assert!(
-            escrow_safety_deposit_balance == constants::get_safety_deposit_amount(), 0
+            escrow_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT, 0
         );
     }
 
@@ -417,19 +470,22 @@ module fusion_plus::escrow_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
-
         let fusion_order_address = object::object_address(&fusion_order);
 
         // Verify fusion order exists
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
 
         // Convert to escrow
-        let escrow = escrow::new_from_order(&resolver, fusion_order);
+        let escrow = escrow::deploy_source(&resolver, fusion_order);
 
         let escrow_address = object::object_address(&escrow);
 
@@ -453,14 +509,18 @@ module fusion_plus::escrow_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Convert to escrow
-        let escrow = escrow::new_from_order(&resolver, fusion_order);
+        let escrow = escrow::deploy_source(&resolver, fusion_order);
 
         // Fast forward to exclusive phase
         let timelock = escrow::get_timelock(escrow);
@@ -475,7 +535,7 @@ module fusion_plus::escrow_tests {
         let initial_resolver_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&resolver),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
 
         // Withdraw using correct secret
@@ -493,12 +553,12 @@ module fusion_plus::escrow_tests {
         let final_resolver_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&resolver),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
         assert!(
             final_resolver_safety_deposit_balance
                 == initial_resolver_safety_deposit_balance
-                    + constants::get_safety_deposit_amount(),
+                    + SAFETY_DEPOSIT_AMOUNT,
             0
         );
     }
@@ -512,14 +572,18 @@ module fusion_plus::escrow_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Convert to escrow
-        let escrow = escrow::new_from_order(&resolver, fusion_order);
+        let escrow = escrow::deploy_source(&resolver, fusion_order);
 
         // Fast forward to exclusive phase
         let timelock = escrow::get_timelock(escrow);
@@ -541,14 +605,18 @@ module fusion_plus::escrow_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Convert to escrow
-        let escrow = escrow::new_from_order(&resolver, fusion_order);
+        let escrow = escrow::deploy_source(&resolver, fusion_order);
 
         // Try to withdraw in finality phase (should fail)
         escrow::withdraw(&resolver, escrow, TEST_SECRET);
@@ -563,14 +631,18 @@ module fusion_plus::escrow_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Convert to escrow
-        let escrow = escrow::new_from_order(&resolver, fusion_order);
+        let escrow = escrow::deploy_source(&resolver, fusion_order);
 
         // Fast forward to exclusive phase
         let timelock = escrow::get_timelock(escrow);
@@ -591,13 +663,18 @@ module fusion_plus::escrow_tests {
 
         // Create escrow directly from resolver (destination chain scenario)
         let escrow =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Fast forward to exclusive phase
@@ -613,7 +690,7 @@ module fusion_plus::escrow_tests {
         let initial_resolver_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&resolver),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
 
         // Withdraw using correct secret
@@ -631,12 +708,12 @@ module fusion_plus::escrow_tests {
         let final_resolver_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&resolver),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
         assert!(
             final_resolver_safety_deposit_balance
                 == initial_resolver_safety_deposit_balance
-                    + constants::get_safety_deposit_amount(),
+                    + SAFETY_DEPOSIT_AMOUNT,
             0
         );
     }
@@ -647,14 +724,20 @@ module fusion_plus::escrow_tests {
         let (_, recipient, resolver, metadata, _) = setup_test();
 
         // Try to create escrow with zero amount
-        escrow::new_from_resolver(
+        escrow::deploy_destination(
             &resolver,
+            ORDER_HASH,
+            aptos_hash::keccak256(TEST_SECRET),
+            signer::address_of(&resolver),
             signer::address_of(&recipient),
             metadata,
-            0, // Zero amount should fail
-            CHAIN_ID,
-            aptos_hash::keccak256(TEST_SECRET)
+            0,
+            SAFETY_DEPOSIT_AMOUNT,
+            FINALITY_DURATION,
+            EXCLUSIVE_DURATION,
+            PRIVATE_CANCELLATION_DURATION
         );
+
     }
 
     #[test]
@@ -663,13 +746,19 @@ module fusion_plus::escrow_tests {
         let (_, recipient, resolver, metadata, _) = setup_test();
 
         // Try to create escrow with invalid hash
-        escrow::new_from_resolver(
+
+        escrow::deploy_destination(
             &resolver,
+            ORDER_HASH,
+            vector::empty(), // Empty hash should fail
+            signer::address_of(&resolver),
             signer::address_of(&recipient),
             metadata,
             ASSET_AMOUNT,
-            CHAIN_ID,
-            vector::empty() // Empty hash should fail
+            SAFETY_DEPOSIT_AMOUNT,
+            FINALITY_DURATION,
+            EXCLUSIVE_DURATION,
+            PRIVATE_CANCELLATION_DURATION
         );
     }
 
@@ -683,12 +772,16 @@ module fusion_plus::escrow_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
-        let escrow = escrow::new_from_order(&resolver, fusion_order);
+        let escrow = escrow::deploy_source(&resolver, fusion_order);
 
         // Fast forward to private cancellation phase
         let timelock = escrow::get_timelock(escrow);
@@ -705,7 +798,7 @@ module fusion_plus::escrow_tests {
         let initial_resolver_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&resolver),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
 
         // Recover escrow (only resolver can do this in private cancellation)
@@ -723,12 +816,12 @@ module fusion_plus::escrow_tests {
         let final_resolver_safety_deposit_balance =
             primary_fungible_store::balance(
                 signer::address_of(&resolver),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
         assert!(
             final_resolver_safety_deposit_balance
                 == initial_resolver_safety_deposit_balance
-                    + constants::get_safety_deposit_amount(),
+                    + SAFETY_DEPOSIT_AMOUNT,
             0
         );
     }
@@ -739,13 +832,18 @@ module fusion_plus::escrow_tests {
 
         // Create escrow from resolver
         let escrow =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Fast forward to public cancellation phase
@@ -763,7 +861,7 @@ module fusion_plus::escrow_tests {
         let initial_anyone_balance =
             primary_fungible_store::balance(
                 signer::address_of(&recipient),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
 
         // Anyone can recover in public cancellation phase
@@ -781,11 +879,11 @@ module fusion_plus::escrow_tests {
         let final_anyone_balance =
             primary_fungible_store::balance(
                 signer::address_of(&recipient),
-                constants::get_safety_deposit_metadata()
+                object::address_to_object<Metadata>(@0xa)
             );
         assert!(
             final_anyone_balance
-                == initial_anyone_balance + constants::get_safety_deposit_amount(),
+                == initial_anyone_balance + SAFETY_DEPOSIT_AMOUNT,
             0
         );
     }
@@ -799,12 +897,16 @@ module fusion_plus::escrow_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
-        let escrow = escrow::new_from_order(&resolver, fusion_order);
+        let escrow = escrow::deploy_source(&resolver, fusion_order);
 
         // Fast forward to private cancellation phase
         let timelock = escrow::get_timelock(escrow);
@@ -828,12 +930,16 @@ module fusion_plus::escrow_tests {
         let fusion_order =
             fusion_order::new(
                 &owner,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
-        let escrow = escrow::new_from_order(&resolver, fusion_order);
+        let escrow = escrow::deploy_source(&resolver, fusion_order);
 
         // Try to recover in finality phase (should fail)
         escrow::recovery(&resolver, escrow);
@@ -846,13 +952,18 @@ module fusion_plus::escrow_tests {
         let (_, recipient, resolver, metadata, _) = setup_test();
 
         let escrow =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Test is_source_chain for destination chain scenario
@@ -861,13 +972,17 @@ module fusion_plus::escrow_tests {
         // Test is_source_chain for source chain scenario
         let fusion_order =
             fusion_order::new(
-                &resolver,
+                &recipient,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
-        let source_chain_escrow = escrow::new_from_order(&resolver, fusion_order);
+        let source_chain_escrow = escrow::deploy_source(&resolver, fusion_order);
         assert!(escrow::is_source_chain(source_chain_escrow) == true, 0); // resolver == to
     }
 
@@ -884,13 +999,18 @@ module fusion_plus::escrow_tests {
 
         // Create escrow with large amount
         let escrow =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 large_amount,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Fast forward to exclusive phase
@@ -922,23 +1042,34 @@ module fusion_plus::escrow_tests {
 
         // Create two escrows with same secret
         let escrow1 =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                ORDER_HASH,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 ASSET_AMOUNT,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
+        let order_hash2: vector<u8> = b"order_hash_456";
         let escrow2 =
-            escrow::new_from_resolver(
+            escrow::deploy_destination(
                 &resolver,
+                order_hash2,
+                aptos_hash::keccak256(TEST_SECRET),
+                signer::address_of(&resolver),
                 signer::address_of(&recipient),
                 metadata,
                 ASSET_AMOUNT * 2,
-                CHAIN_ID,
-                aptos_hash::keccak256(TEST_SECRET)
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
             );
 
         // Fast forward to exclusive phase for both

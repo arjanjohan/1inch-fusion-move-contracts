@@ -7,7 +7,6 @@ module fusion_plus::escrow {
 
     use fusion_plus::hashlock::{Self, HashLock};
     use fusion_plus::timelock::{Self, Timelock};
-    use fusion_plus::constants;
     use fusion_plus::fusion_order::{Self, FusionOrder};
 
     // - - - - ERROR CODES - - - -
@@ -30,13 +29,13 @@ module fusion_plus::escrow {
     #[event]
     /// Event emitted when an escrow is created
     struct EscrowCreatedEvent has drop, store {
+        order_hash: vector<u8>,
         escrow: Object<Escrow>,
-        from: address,
-        to: address,
-        resolver: address,
+        maker: address,
+        taker: address,
         metadata: Object<Metadata>,
         amount: u64,
-        chain_id: u64,
+        safety_deposit_amount: u64,
         is_source_chain: bool
     }
 
@@ -44,7 +43,7 @@ module fusion_plus::escrow {
     /// Event emitted when an escrow is withdrawn by the recipient
     struct EscrowWithdrawnEvent has drop, store {
         escrow: Object<Escrow>,
-        recipient: address,
+        taker: address,
         resolver: address,
         metadata: Object<Metadata>,
         amount: u64
@@ -54,8 +53,8 @@ module fusion_plus::escrow {
     /// Event emitted when an escrow is recovered/cancelled
     struct EscrowRecoveredEvent has drop, store {
         escrow: Object<Escrow>,
-        recovered_by: address,
-        returned_to: address,
+        maker: address,
+        resolver: address,
         metadata: Object<Metadata>,
         amount: u64
     }
@@ -72,34 +71,17 @@ module fusion_plus::escrow {
         delete_ref: DeleteRef
     }
 
-    struct Immutables has store {
-        orderHash: vector<u8>,
-        hashlock: vector<u8>,
-        maker: address,
-        taker: address,
-        asset_metadata: address,
-        amount: u64,
-        safetyDeposit: u64,
-    }
-
     /// An Escrow Object that contains the assets that are being escrowed.
     /// The object can be stored in other structs because it has the `store` ability.
     ///
-    /// @param metadata The metadata of the asset.
-    /// @param amount The amount of the asset being escrowed.
-    /// @param from The address that created the escrow (source).
-    /// @param to The address that can withdraw the escrow (destination).
-    /// @param resolver The resolver address managing this escrow.
-    /// @param chain_id Chain ID where this asset originated.
-    /// @param timelock The timelock controlling the asset phases.
-    /// @param hashlock The hashlock protecting the asset.
     struct Escrow has key, store {
+        order_hash: vector<u8>,
         metadata: Object<Metadata>,
         amount: u64,
-        from: address,
-        to: address,
-        resolver: address,
-        chain_id: u64,
+        safety_deposit_amount: u64,
+        maker: address,
+        taker: address,
+        is_source_chain: bool,
         timelock: Timelock,
         hashlock: HashLock
     }
@@ -114,19 +96,29 @@ module fusion_plus::escrow {
 
     public entry fun deploy_destination_entry(
         resolver: &signer,
-        recipient_address: address,
+        order_hash: vector<u8>,
+        hash: vector<u8>,
+        maker: address,
+        taker: address,
         metadata: Object<Metadata>,
         amount: u64,
-        chain_id: u64,
-        hash: vector<u8>
+        safety_deposit_amount: u64,
+        finality_duration: u64,
+        exclusive_duration: u64,
+        private_cancellation_duration: u64
     ) {
         deploy_destination(
             resolver,
-            recipient_address,
+            order_hash,
+            hash,
+            maker,
+            taker,
             metadata,
             amount,
-            chain_id,
-            hash
+            safety_deposit_amount,
+            finality_duration,
+            exclusive_duration,
+            private_cancellation_duration
         );
     }
 
@@ -142,21 +134,22 @@ module fusion_plus::escrow {
     public fun deploy_source(
         resolver: &signer, fusion_order: Object<FusionOrder>
     ): Object<Escrow> {
-        let owner_address = fusion_order::get_owner(fusion_order);
-        let resolver_address = signer::address_of(resolver);
-        let chain_id = fusion_order::get_chain_id(fusion_order);
-        let hash = fusion_order::get_hash(fusion_order);
+        // let owner_address = fusion_order::get_owner(fusion_order);
+        // let resolver_address = signer::address_of(resolver);
+        // let hash = fusion_order::get_hash(fusion_order);
         let (asset, safety_deposit_asset) =
             fusion_order::resolver_accept_order(resolver, fusion_order);
         new(
             resolver,
+            fusion_order::get_order_hash(fusion_order),
             asset,
             safety_deposit_asset,
-            owner_address, //from
-            resolver_address, //to
-            resolver_address, //resolver
-            chain_id,
-            hash
+            fusion_order::get_maker(fusion_order), // maker
+            signer::address_of(resolver), // taker
+            fusion_order::get_hash(fusion_order),
+            fusion_order::get_finality_duration(fusion_order),
+            fusion_order::get_exclusive_duration(fusion_order),
+            fusion_order::get_private_cancellation_duration(fusion_order)
         )
     }
 
@@ -167,7 +160,6 @@ module fusion_plus::escrow {
     /// @param recipient_address The address that can withdraw the escrow.
     /// @param metadata The metadata of the asset being escrowed.
     /// @param amount The amount of the asset being escrowed.
-    /// @param chain_id The chain ID where this asset originated.
     /// @param hash The hash of the secret for the cross-chain swap.
     ///
     /// @reverts EINVALID_AMOUNT if amount is zero.
@@ -175,11 +167,16 @@ module fusion_plus::escrow {
     /// @return Object<Escrow> The created escrow object.
     public fun deploy_destination(
         resolver: &signer,
-        recipient_address: address,
+        order_hash: vector<u8>,
+        hash: vector<u8>,
+        maker: address,
+        taker: address,
         metadata: Object<Metadata>,
         amount: u64,
-        chain_id: u64,
-        hash: vector<u8>
+        safety_deposit_amount: u64,
+        finality_duration: u64,
+        exclusive_duration: u64,
+        private_cancellation_duration: u64
     ): Object<Escrow> {
         let resolver_address = signer::address_of(resolver);
 
@@ -192,18 +189,20 @@ module fusion_plus::escrow {
         let safety_deposit_asset =
             primary_fungible_store::withdraw(
                 resolver,
-                constants::get_safety_deposit_metadata(),
-                constants::get_safety_deposit_amount()
+                safety_deposit_metadata(),
+                safety_deposit_amount
             );
         new(
             resolver,
+            order_hash,
             asset,
             safety_deposit_asset,
-            resolver_address, // from
-            recipient_address, // to
-            resolver_address, // resolver
-            chain_id,
-            hash
+            signer::address_of(resolver), // maker
+            taker, // taker
+            hash,
+            finality_duration,
+            exclusive_duration,
+            private_cancellation_duration
         )
     }
 
@@ -215,23 +214,24 @@ module fusion_plus::escrow {
     /// @param from The address that created the escrow.
     /// @param to The address that can withdraw the escrow.
     /// @param resolver The resolver address managing this escrow.
-    /// @param chain_id The chain ID where this asset originated.
     /// @param hash The hash of the secret for the cross-chain swap.
     ///
     /// @return Object<Escrow> The created escrow object.
     fun new(
-        signer: &signer,
+        resolver: &signer,
+        order_hash: vector<u8>,
         asset: FungibleAsset,
         safety_deposit_asset: FungibleAsset,
-        from: address,
-        to: address,
-        resolver: address,
-        chain_id: u64,
-        hash: vector<u8>
+        maker: address,
+        taker: address,
+        hash: vector<u8>,
+        finality_duration: u64,
+        exclusive_duration: u64,
+        private_cancellation_duration: u64
     ): Object<Escrow> {
 
         // Create the object and Escrow
-        let constructor_ref = object::create_object_from_account(signer);
+        let constructor_ref = object::create_object_from_account(resolver);
         let object_signer = object::generate_signer(&constructor_ref);
         let extend_ref = object::generate_extend_ref(&constructor_ref);
         let delete_ref = object::generate_delete_ref(&constructor_ref);
@@ -242,20 +242,28 @@ module fusion_plus::escrow {
             EscrowController { extend_ref, delete_ref }
         );
 
-        let timelock = timelock::new();
+        let timelock = timelock::new_from_durations(
+            finality_duration, exclusive_duration, private_cancellation_duration
+        );
         let hashlock = hashlock::create_hashlock(hash);
 
         let metadata = fungible_asset::metadata_from_asset(&asset);
         let amount = fungible_asset::amount(&asset);
+        let safety_deposit_amount = fungible_asset::amount(&safety_deposit_asset);
+
+        // Determine if this is on source chain (resolver == to)
+        let resolver_address = signer::address_of(resolver);
+        let is_source_chain = resolver_address == taker;
 
         // Create the Escrow
         let escrow_obj = Escrow {
+            order_hash,
             metadata,
             amount,
-            from,
-            to,
-            resolver,
-            chain_id,
+            safety_deposit_amount,
+            maker,
+            taker,
+            is_source_chain,
             timelock,
             hashlock
         };
@@ -266,25 +274,23 @@ module fusion_plus::escrow {
 
         // Store the asset in the escrow primary store
         primary_fungible_store::ensure_primary_store_exists(object_address, metadata);
+
+        // TODO: Merge if asset is native token
+        primary_fungible_store::deposit(object_address, safety_deposit_asset);
         primary_fungible_store::deposit(object_address, asset);
 
-        primary_fungible_store::deposit(object_address, safety_deposit_asset);
-
         let escrow = object::object_from_constructor_ref(&constructor_ref);
-
-        // Determine if this is on source chain (resolver == to)
-        let is_source_chain = resolver == to;
 
         // Emit creation event
         event::emit(
             EscrowCreatedEvent {
+                order_hash,
                 escrow,
-                from,
-                to,
-                resolver,
+                maker,
+                taker,
                 metadata,
                 amount,
-                chain_id,
+                safety_deposit_amount,
                 is_source_chain
             }
         );
@@ -292,7 +298,7 @@ module fusion_plus::escrow {
         escrow
     }
 
-    /// Withdraws assets from an escrow using the correct secret.
+    /// Withdraws assets from an escrow to the taker using the correct secret.
     /// This function can only be called by the resolver during the exclusive phase.
     ///
     /// @param signer The signer of the resolver.
@@ -311,7 +317,7 @@ module fusion_plus::escrow {
         assert!(escrow_exists(escrow), EOBJECT_DOES_NOT_EXIST);
 
         let escrow_ref = borrow_escrow_mut(&escrow);
-        assert!(escrow_ref.resolver == signer_address, EINVALID_CALLER);
+        assert!(is_resolver(escrow_ref, signer_address), EINVALID_CALLER);
 
         let timelock = escrow_ref.timelock;
         assert!(timelock::is_in_exclusive_phase(&timelock), EINVALID_PHASE);
@@ -326,23 +332,23 @@ module fusion_plus::escrow {
 
         let object_signer = object::generate_signer_for_extending(&extend_ref);
 
-        // Store event data before deletion
-        let recipient = escrow_ref.to;
+        let taker = escrow_ref.taker;
         let metadata = escrow_ref.metadata;
         let amount = escrow_ref.amount;
+        let safety_deposit_amount = escrow_ref.safety_deposit_amount;
 
         primary_fungible_store::transfer(
             &object_signer,
-            escrow_ref.metadata,
-            escrow_ref.to,
-            escrow_ref.amount
+            metadata,
+            taker,
+            amount
         );
 
         primary_fungible_store::transfer(
             &object_signer,
-            constants::get_safety_deposit_metadata(),
+            object::address_to_object<Metadata>(@0xa),
             signer_address,
-            constants::get_safety_deposit_amount()
+            safety_deposit_amount
         );
 
         object::delete(delete_ref);
@@ -351,7 +357,7 @@ module fusion_plus::escrow {
         event::emit(
             EscrowWithdrawnEvent {
                 escrow,
-                recipient,
+                taker,
                 resolver: signer_address,
                 metadata,
                 amount
@@ -380,7 +386,7 @@ module fusion_plus::escrow {
         let timelock = escrow_ref.timelock;
 
         if (timelock::is_in_private_cancellation_phase(&timelock)) {
-            assert!(escrow_ref.resolver == signer_address, EINVALID_CALLER);
+            assert!(is_resolver(escrow_ref, signer_address), EINVALID_CALLER);
         } else {
             assert!(
                 timelock::is_in_public_cancellation_phase(&timelock), EINVALID_PHASE
@@ -393,34 +399,44 @@ module fusion_plus::escrow {
         let object_signer = object::generate_signer_for_extending(&extend_ref);
 
         // Store event data before deletion
-        let recovered_by = signer_address;
-        let returned_to = escrow_ref.from;
+        let resolver = signer_address;
+        let maker = escrow_ref.maker;
         let metadata = escrow_ref.metadata;
         let amount = escrow_ref.amount;
 
         primary_fungible_store::transfer(
             &object_signer,
             escrow_ref.metadata,
-            escrow_ref.from,
+            escrow_ref.maker,
             escrow_ref.amount
         );
 
         primary_fungible_store::transfer(
             &object_signer,
-            constants::get_safety_deposit_metadata(),
+            object::address_to_object<Metadata>(@0xa),
             signer_address,
-            constants::get_safety_deposit_amount()
+            escrow_ref.safety_deposit_amount
         );
 
         object::delete(delete_ref);
 
         // Emit recovery event
         event::emit(
-            EscrowRecoveredEvent { escrow, recovered_by, returned_to, metadata, amount }
+            EscrowRecoveredEvent { escrow, maker, resolver, metadata, amount }
         );
     }
 
     // - - - - VIEW FUNCTIONS - - - -
+
+    #[view]
+    /// Gets the order hash of an escrow.
+    ///
+    /// @param escrow The escrow to get the order hash from.
+    /// @return vector<u8> The order hash.
+    public fun get_order_hash(escrow: Object<Escrow>): vector<u8> acquires Escrow {
+        let escrow_ref = borrow_escrow(&escrow);
+        escrow_ref.order_hash
+    }
 
     #[view]
     /// Gets the metadata of the asset in an escrow.
@@ -443,43 +459,33 @@ module fusion_plus::escrow {
     }
 
     #[view]
-    /// Gets the 'from' address of an escrow.
+    /// Gets the safety deposit amount of an escrow.
     ///
-    /// @param escrow The escrow to get the 'from' address from.
+    /// @param escrow The escrow to get the safety deposit amount from.
+    /// @return u64 The safety deposit amount.
+    public fun get_safety_deposit_amount(escrow: Object<Escrow>): u64 acquires Escrow {
+        let escrow_ref = borrow_escrow(&escrow);
+        escrow_ref.safety_deposit_amount
+    }
+
+    #[view]
+    /// Gets the maker address of an escrow.
+    ///
+    /// @param escrow The escrow to get the maker address from.
     /// @return address The address that created the escrow.
-    public fun get_from(escrow: Object<Escrow>): address acquires Escrow {
+    public fun get_maker(escrow: Object<Escrow>): address acquires Escrow {
         let escrow_ref = borrow_escrow(&escrow);
-        escrow_ref.from
+        escrow_ref.maker
     }
 
     #[view]
-    /// Gets the 'to' address of an escrow.
+    /// Gets the taker address of an escrow.
     ///
-    /// @param escrow The escrow to get the 'to' address from.
+    /// @param escrow The escrow to get the taker address from.
     /// @return address The address that can withdraw the escrow.
-    public fun get_to(escrow: Object<Escrow>): address acquires Escrow {
+    public fun get_taker(escrow: Object<Escrow>): address acquires Escrow {
         let escrow_ref = borrow_escrow(&escrow);
-        escrow_ref.to
-    }
-
-    #[view]
-    /// Gets the resolver address of an escrow.
-    ///
-    /// @param escrow The escrow to get the resolver from.
-    /// @return address The resolver address.
-    public fun get_resolver(escrow: Object<Escrow>): address acquires Escrow {
-        let escrow_ref = borrow_escrow(&escrow);
-        escrow_ref.resolver
-    }
-
-    #[view]
-    /// Gets the chain ID of an escrow.
-    ///
-    /// @param escrow The escrow to get the chain ID from.
-    /// @return u64 The chain ID.
-    public fun get_chain_id(escrow: Object<Escrow>): u64 acquires Escrow {
-        let escrow_ref = borrow_escrow(&escrow);
-        escrow_ref.chain_id
+        escrow_ref.taker
     }
 
     #[view]
@@ -503,13 +509,53 @@ module fusion_plus::escrow {
     }
 
     #[view]
+    /// Gets the hash of an escrow.
+    ///
+    /// @param escrow The escrow to get the hash from.
+    /// @return vector<u8> The hash.
+    public fun get_hash(escrow: Object<Escrow>): vector<u8> acquires Escrow {
+        let escrow_ref = borrow_escrow(&escrow);
+        hashlock::get_hash(&escrow_ref.hashlock)
+    }
+
+    #[view]
     /// Checks if an escrow is on the source chain.
     ///
     /// @param escrow The escrow to check.
     /// @return bool True if the escrow is on the source chain, false otherwise.
     public fun is_source_chain(escrow: Object<Escrow>): bool acquires Escrow {
         let escrow_ref = borrow_escrow(&escrow);
-        escrow_ref.to == escrow_ref.resolver
+        escrow_ref.is_source_chain
+    }
+
+    #[view]
+    /// Gets the finality duration of an escrow.
+    ///
+    /// @param escrow The escrow to get the finality duration from.
+    /// @return u64 The finality duration.
+    public fun get_finality_duration(escrow: Object<Escrow>): u64 acquires Escrow {
+        let escrow_ref = borrow_escrow(&escrow);
+        timelock::get_finality_duration(&escrow_ref.timelock)
+    }
+
+    #[view]
+    /// Gets the exclusive duration of an escrow.
+    ///
+    /// @param escrow The escrow to get the exclusive duration from.
+    /// @return u64 The exclusive duration.
+    public fun get_exclusive_duration(escrow: Object<Escrow>): u64 acquires Escrow {
+        let escrow_ref = borrow_escrow(&escrow);
+        timelock::get_exclusive_duration(&escrow_ref.timelock)
+    }
+
+    #[view]
+    /// Gets the private cancellation duration of an escrow.
+    ///
+    /// @param escrow The escrow to get the private cancellation duration from.
+    /// @return u64 The private cancellation duration.
+    public fun get_private_cancellation_duration(escrow: Object<Escrow>): u64 acquires Escrow {
+        let escrow_ref = borrow_escrow(&escrow);
+        timelock::get_private_cancellation_duration(&escrow_ref.timelock)
     }
 
     #[view]
@@ -537,6 +583,20 @@ module fusion_plus::escrow {
     /// @return bool True if the escrow exists, false otherwise.
     public fun escrow_exists(escrow: Object<Escrow>): bool {
         object::object_exists<Escrow>(object::object_address(&escrow))
+    }
+
+    // - - - - INTERNAL FUNCTIONS - - - -
+
+    fun safety_deposit_metadata(): Object<Metadata> {
+        object::address_to_object<Metadata>(@0xa)
+    }
+
+    inline fun is_resolver(escrow: &Escrow, resolver: address): bool{
+        if (escrow.is_source_chain) {
+            escrow.taker == resolver
+        } else {
+            escrow.maker == resolver
+        }
     }
 
     // - - - - BORROW FUNCTIONS - - - -

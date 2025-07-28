@@ -1,6 +1,5 @@
 module fusion_plus::timelock {
     use aptos_framework::timestamp;
-    use fusion_plus::constants;
 
     /// Error codes
     const EINVALID_DURATION: u64 = 1;
@@ -40,13 +39,18 @@ module fusion_plus::timelock {
     }
 
     public fun new(): Timelock {
-        let finality_duration = constants::get_finality_duration();
-        let exclusive_duration = constants::get_exclusive_duration();
-        let private_cancellation_duration =
-            constants::get_private_cancellation_duration();
+        let finality_duration = 10;
+        let exclusive_duration = 10;
+        let private_cancellation_duration = 10;
         new_internal(
             finality_duration, exclusive_duration, private_cancellation_duration
         )
+    }
+
+    public fun new_from_durations(
+        finality_duration: u64, exclusive_duration: u64, private_cancellation_duration: u64
+    ): Timelock {
+        new_internal(finality_duration, exclusive_duration, private_cancellation_duration)
     }
 
     /// Creates a new Timelock with the specified durations.
@@ -179,6 +183,30 @@ module fusion_plus::timelock {
     /// @return u64 The creation timestamp in seconds.
     public fun get_created_at(timelock: &Timelock): u64 {
         timelock.created_at
+    }
+
+    /// Gets the finality duration of the timelock.
+    ///
+    /// @param timelock The Timelock to get finality duration from.
+    /// @return u64 The finality duration in seconds.
+    public fun get_finality_duration(timelock: &Timelock): u64 {
+        timelock.finality_duration
+    }
+
+    /// Gets the exclusive duration of the timelock.
+    ///
+    /// @param timelock The Timelock to get exclusive duration from.
+    /// @return u64 The exclusive duration in seconds.
+    public fun get_exclusive_duration(timelock: &Timelock): u64 {
+        timelock.exclusive_duration
+    }
+
+    /// Gets the private cancellation duration of the timelock.
+    ///
+    /// @param timelock The Timelock to get private cancellation duration from.
+    /// @return u64 The private cancellation duration in seconds.
+    public fun get_private_cancellation_duration(timelock: &Timelock): u64 {
+        timelock.private_cancellation_duration
     }
 
     /// Gets all durations of the timelock.
