@@ -6,12 +6,12 @@ module fusion_plus::timelock {
     const EOVERFLOW: u64 = 2;
 
     /// Boundaries for the timelock in seconds.
-    // TODO: Figure out the best values for these boundaries.
+    // NOTE: The minimum values are set to be very short for testing purposes.
     const MIN_FINALITY_DURATION: u64 = 1; // 1 second
     const MAX_FINALITY_DURATION: u64 = 60 * 60 * 24; // 1 day
-    const MIN_EXCLUSIVE_DURATION: u64 = 30; // 30 seconds
+    const MIN_EXCLUSIVE_DURATION: u64 = 1; // 1 second
     const MAX_EXCLUSIVE_DURATION: u64 = 60 * 60 * 24 * 30; // 30 days
-    const MIN_PRIVATE_CANCELLATION_DURATION: u64 = 60; // 1 minute
+    const MIN_PRIVATE_CANCELLATION_DURATION: u64 = 1; // 1 second
     const MAX_PRIVATE_CANCELLATION_DURATION: u64 = 60 * 60 * 24 * 30; // 30 days
 
     /// Phase constants

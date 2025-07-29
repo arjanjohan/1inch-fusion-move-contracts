@@ -98,7 +98,6 @@ module fusion_plus::escrow {
         resolver: &signer,
         order_hash: vector<u8>,
         hash: vector<u8>,
-        maker: address,
         taker: address,
         metadata: Object<Metadata>,
         amount: u64,
@@ -111,7 +110,6 @@ module fusion_plus::escrow {
             resolver,
             order_hash,
             hash,
-            maker,
             taker,
             metadata,
             amount,
@@ -169,7 +167,6 @@ module fusion_plus::escrow {
         resolver: &signer,
         order_hash: vector<u8>,
         hash: vector<u8>,
-        maker: address,
         taker: address,
         metadata: Object<Metadata>,
         amount: u64,
@@ -178,8 +175,6 @@ module fusion_plus::escrow {
         exclusive_duration: u64,
         private_cancellation_duration: u64
     ): Object<Escrow> {
-        let resolver_address = signer::address_of(resolver);
-
         // Validate inputs
         assert!(amount > 0, EINVALID_AMOUNT);
         assert!(hashlock::is_valid_hash(&hash), EINVALID_HASH);
