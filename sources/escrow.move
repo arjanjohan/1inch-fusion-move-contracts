@@ -8,6 +8,7 @@ module fusion_plus::escrow {
     use fusion_plus::hashlock::{Self, HashLock};
     use fusion_plus::timelock::{Self, Timelock};
     use fusion_plus::fusion_order::{Self, FusionOrder};
+    // use fusion_plus::dutch_auction::{Self, DutchAuction};
 
     // - - - - ERROR CODES - - - -
 
@@ -43,7 +44,7 @@ module fusion_plus::escrow {
     /// Event emitted when an escrow is withdrawn by the recipient
     struct EscrowWithdrawnEvent has drop, store {
         escrow: Object<Escrow>,
-        taker: address,
+        withdraw_to: address,
         resolver: address,
         metadata: Object<Metadata>,
         amount: u64
@@ -53,7 +54,7 @@ module fusion_plus::escrow {
     /// Event emitted when an escrow is recovered/cancelled
     struct EscrowRecoveredEvent has drop, store {
         escrow: Object<Escrow>,
-        maker: address,
+        recover_to: address,
         resolver: address,
         metadata: Object<Metadata>,
         amount: u64
@@ -94,6 +95,7 @@ module fusion_plus::escrow {
         deploy_source(resolver, fusion_order);
     }
 
+
     public entry fun deploy_destination_entry(
         resolver: &signer,
         order_hash: vector<u8>,
@@ -120,6 +122,26 @@ module fusion_plus::escrow {
         );
     }
 
+    // public entry fun deploy_destination_with_auction_entry(
+    //     resolver: &signer,
+    //     auction: Object<DutchAuction>,
+    //     hash: vector<u8>,
+    //     safety_deposit_amount: u64,
+    //     finality_duration: u64,
+    //     exclusive_duration: u64,
+    //     private_cancellation_duration: u64
+    // ) {
+    //     deploy_destination_with_auction(
+    //         resolver,
+    //         auction,
+    //         hash,
+    //         safety_deposit_amount,
+    //         finality_duration,
+    //         exclusive_duration,
+    //         private_cancellation_duration
+    //     );
+    // }
+
     // - - - - PUBLIC FUNCTIONS - - - -
 
     /// Creates a new Escrow from a fusion order.
@@ -144,6 +166,7 @@ module fusion_plus::escrow {
             safety_deposit_asset,
             fusion_order::get_maker(fusion_order), // maker
             signer::address_of(resolver), // taker
+            true, // is_source_chain
             fusion_order::get_hash(fusion_order),
             fusion_order::get_finality_duration(fusion_order),
             fusion_order::get_exclusive_duration(fusion_order),
@@ -167,7 +190,7 @@ module fusion_plus::escrow {
         resolver: &signer,
         order_hash: vector<u8>,
         hash: vector<u8>,
-        taker: address,
+        maker: address,
         metadata: Object<Metadata>,
         amount: u64,
         safety_deposit_amount: u64,
@@ -192,14 +215,81 @@ module fusion_plus::escrow {
             order_hash,
             asset,
             safety_deposit_asset,
-            signer::address_of(resolver), // maker
-            taker, // taker
+            maker, // maker
+            signer::address_of(resolver), // taker
+            false, // is_source_chain
             hash,
             finality_duration,
             exclusive_duration,
             private_cancellation_duration
         )
     }
+
+    // /// Creates a new Escrow using a Dutch auction to determine the price.
+    // /// This function is called when a resolver creates an escrow for an ETH > APT order.
+    // /// The amount is determined by the current auction price.
+    // ///
+    // /// @param resolver The signer of the resolver creating the escrow.
+    // /// @param auction The Dutch auction that determines the price.
+    // /// @param hash The hash of the secret for the cross-chain swap.
+    // /// @param taker The address that can withdraw the escrow.
+    // /// @param safety_deposit_amount The amount of safety deposit required.
+    // /// @param finality_duration The finality duration for the escrow.
+    // /// @param exclusive_duration The exclusive duration for the escrow.
+    // /// @param private_cancellation_duration The private cancellation duration for the escrow.
+    // ///
+    // /// @reverts EINVALID_AMOUNT if auction price is zero.
+    // /// @reverts EINSUFFICIENT_BALANCE if resolver has insufficient balance.
+    // /// @reverts EINVALID_HASH if the hash is invalid.
+    // /// @return Object<Escrow> The created escrow object.
+    // public fun deploy_destination_with_auction(
+    //     resolver: &signer,
+    //     auction: Object<DutchAuction>,
+    //     hash: vector<u8>,
+    //     safety_deposit_amount: u64,
+    //     finality_duration: u64,
+    //     exclusive_duration: u64,
+    //     private_cancellation_duration: u64
+    // ): Object<Escrow> {
+    //     // Validate inputs
+    //     assert!(hashlock::is_valid_hash(&hash), EINVALID_HASH);
+
+    //     // Get auction details
+    //     let order_hash = dutch_auction::get_order_hash(auction);
+    //     let metadata = dutch_auction::get_metadata(auction);
+    //     let current_price = dutch_auction::get_current_price(auction);
+    //     let taker = dutch_auction::get_taker(auction);
+
+    //     // Validate auction price
+    //     assert!(current_price > 0, EINVALID_AMOUNT);
+
+    //     // Fill the auction to get the fill price
+    //     let fill_price = dutch_auction::fill_auction(resolver, auction);
+
+    //     // Withdraw the auction-determined amount from resolver
+    //     let asset = primary_fungible_store::withdraw(resolver, metadata, fill_price);
+
+    //     let safety_deposit_asset =
+    //         primary_fungible_store::withdraw(
+    //             resolver,
+    //             safety_deposit_metadata(),
+    //             safety_deposit_amount
+    //         );
+
+    //     new(
+    //         resolver,
+    //         order_hash,
+    //         asset,
+    //         safety_deposit_asset,
+    //         signer::address_of(resolver), // maker TODO: change to resolver
+    //         taker, // taker TODO: change to resolver
+    //         false, // is_source_chain
+    //         hash,
+    //         finality_duration,
+    //         exclusive_duration,
+    //         private_cancellation_duration
+    //     )
+    // }
 
     /// Internal function to create a new Escrow with the specified parameters.
     ///
@@ -219,6 +309,7 @@ module fusion_plus::escrow {
         safety_deposit_asset: FungibleAsset,
         maker: address,
         taker: address,
+        is_source_chain: bool,
         hash: vector<u8>,
         finality_duration: u64,
         exclusive_duration: u64,
@@ -245,10 +336,6 @@ module fusion_plus::escrow {
         let metadata = fungible_asset::metadata_from_asset(&asset);
         let amount = fungible_asset::amount(&asset);
         let safety_deposit_amount = fungible_asset::amount(&safety_deposit_asset);
-
-        // Determine if this is on source chain (resolver == to)
-        let resolver_address = signer::address_of(resolver);
-        let is_source_chain = resolver_address == taker;
 
         // Create the Escrow
         let escrow_obj = Escrow {
@@ -312,7 +399,7 @@ module fusion_plus::escrow {
         assert!(escrow_exists(escrow), EOBJECT_DOES_NOT_EXIST);
 
         let escrow_ref = borrow_escrow_mut(&escrow);
-        assert!(is_resolver(escrow_ref, signer_address), EINVALID_CALLER);
+        assert!(escrow_ref.taker == signer_address, EINVALID_CALLER);
 
         let timelock = escrow_ref.timelock;
         assert!(timelock::is_in_exclusive_phase(&timelock), EINVALID_PHASE);
@@ -327,7 +414,11 @@ module fusion_plus::escrow {
 
         let object_signer = object::generate_signer_for_extending(&extend_ref);
 
-        let taker = escrow_ref.taker;
+        let withdraw_to = if (escrow_ref.is_source_chain) {
+            escrow_ref.taker
+        } else {
+            escrow_ref.maker
+        };
         let metadata = escrow_ref.metadata;
         let amount = escrow_ref.amount;
         let safety_deposit_amount = escrow_ref.safety_deposit_amount;
@@ -335,7 +426,7 @@ module fusion_plus::escrow {
         primary_fungible_store::transfer(
             &object_signer,
             metadata,
-            taker,
+            withdraw_to,
             amount
         );
 
@@ -352,7 +443,7 @@ module fusion_plus::escrow {
         event::emit(
             EscrowWithdrawnEvent {
                 escrow,
-                taker,
+                withdraw_to,
                 resolver: signer_address,
                 metadata,
                 amount
@@ -381,7 +472,7 @@ module fusion_plus::escrow {
         let timelock = escrow_ref.timelock;
 
         if (timelock::is_in_private_cancellation_phase(&timelock)) {
-            assert!(is_resolver(escrow_ref, signer_address), EINVALID_CALLER);
+            assert!(escrow_ref.taker == signer_address, EINVALID_CALLER);
         } else {
             assert!(
                 timelock::is_in_public_cancellation_phase(&timelock), EINVALID_PHASE
@@ -395,14 +486,18 @@ module fusion_plus::escrow {
 
         // Store event data before deletion
         let resolver = signer_address;
-        let maker = escrow_ref.maker;
+        let recover_to = if (escrow_ref.is_source_chain) {
+            escrow_ref.maker
+        } else {
+            escrow_ref.taker
+        };
         let metadata = escrow_ref.metadata;
         let amount = escrow_ref.amount;
 
         primary_fungible_store::transfer(
             &object_signer,
             escrow_ref.metadata,
-            escrow_ref.maker,
+            recover_to,
             escrow_ref.amount
         );
 
@@ -417,7 +512,7 @@ module fusion_plus::escrow {
 
         // Emit recovery event
         event::emit(
-            EscrowRecoveredEvent { escrow, maker, resolver, metadata, amount }
+            EscrowRecoveredEvent { escrow, recover_to, resolver, metadata, amount }
         );
     }
 
@@ -584,14 +679,6 @@ module fusion_plus::escrow {
 
     fun safety_deposit_metadata(): Object<Metadata> {
         object::address_to_object<Metadata>(@0xa)
-    }
-
-    inline fun is_resolver(escrow: &Escrow, resolver: address): bool{
-        if (escrow.is_source_chain) {
-            escrow.taker == resolver
-        } else {
-            escrow.maker == resolver
-        }
     }
 
     // - - - - BORROW FUNCTIONS - - - -

@@ -154,8 +154,8 @@ module fusion_plus::escrow_tests {
         // Verify escrow properties
         assert!(escrow::get_metadata(escrow) == metadata, 0);
         assert!(escrow::get_amount(escrow) == ASSET_AMOUNT, 0);
-        assert!(escrow::get_maker(escrow) == signer::address_of(&resolver), 0);
-        assert!(escrow::get_taker(escrow) == signer::address_of(&recipient), 0);
+        assert!(escrow::get_maker(escrow) == signer::address_of(&recipient), 0);
+        assert!(escrow::get_taker(escrow) == signer::address_of(&resolver), 0);
 
 
         // Verify resolver's balances decreased
@@ -283,8 +283,10 @@ module fusion_plus::escrow_tests {
             );
 
         // Verify escrow properties
-        assert!(escrow::get_taker(escrow1) == signer::address_of(&recipient1), 0);
-        assert!(escrow::get_taker(escrow2) == signer::address_of(&recipient2), 0);
+        assert!(escrow::get_maker(escrow1) == signer::address_of(&recipient1), 0);
+        assert!(escrow::get_maker(escrow2) == signer::address_of(&recipient2), 0);
+        assert!(escrow::get_taker(escrow1) == signer::address_of(&resolver), 0);
+        assert!(escrow::get_taker(escrow2) == signer::address_of(&resolver), 0);
         assert!(escrow::get_amount(escrow1) == ASSET_AMOUNT, 0);
         assert!(escrow::get_amount(escrow2) == ASSET_AMOUNT * 2, 0);
 
@@ -320,8 +322,8 @@ module fusion_plus::escrow_tests {
 
         // Verify escrow properties
         assert!(escrow::get_amount(escrow) == large_amount, 0);
-        assert!(escrow::get_maker(escrow) == signer::address_of(&resolver), 0);
-        assert!(escrow::get_taker(escrow) == signer::address_of(&recipient), 0);
+        assert!(escrow::get_maker(escrow) == signer::address_of(&recipient), 0);
+        assert!(escrow::get_taker(escrow) == signer::address_of(&resolver), 0);
 
         // Verify resolver's balance decreased
         let final_resolver_balance =
