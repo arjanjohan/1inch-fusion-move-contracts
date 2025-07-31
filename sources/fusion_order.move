@@ -8,7 +8,6 @@ module fusion_plus::fusion_order {
     use aptos_framework::primary_fungible_store;
     use aptos_framework::timestamp;
 
-    use fusion_plus::resolver_registry;
     use fusion_plus::hashlock;
     use std::option::{Self, Option};
 
@@ -50,6 +49,8 @@ module fusion_plus::fusion_order {
     const EINVALID_SAFETY_DEPOSIT_AMOUNT_FOR_PARTIAL_FILL: u64 = 16;
     /// Invalid resolver whitelist
     const EINVALID_RESOLVER_WHITELIST: u64 = 17;
+    /// Not in resolver cancellation period
+    const ENOT_IN_RESOLVER_CANCELLATION_PERIOD: u64 = 18;
 
     // - - - - EVENTS - - - -
 
@@ -288,10 +289,10 @@ module fusion_plus::fusion_order {
         let signer_address = signer::address_of(signer);
         assert!(order_exists(fusion_order), EOBJECT_DOES_NOT_EXIST);
 
+        // If maker doesn't cancel this order
         if (!(is_maker(fusion_order, signer_address))) {
-            if (is_auto_cancel_active(fusion_order)) {
-                assert!(is_valid_resolver(fusion_order, signer_address), EINVALID_RESOLVER);
-            };
+            assert!(is_valid_resolver(fusion_order, signer_address), EINVALID_CALLER);
+            assert!(is_auto_cancel_active(fusion_order), ENOT_IN_RESOLVER_CANCELLATION_PERIOD);
         };
 
         let object_address = object::object_address(&fusion_order);
@@ -539,7 +540,7 @@ module fusion_plus::fusion_order {
         );
 
         // If order is completely filled, delete it
-        if (is_completely_filled) {
+        if (is_completely_filled(fusion_order)) {
             object::delete(delete_ref);
         } else {
             // Move controller back
