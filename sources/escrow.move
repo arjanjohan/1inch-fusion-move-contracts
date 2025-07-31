@@ -1,5 +1,6 @@
 module fusion_plus::escrow {
     use std::signer;
+    use std::option::{Self, Option};
     use aptos_framework::event::{Self};
     use aptos_framework::fungible_asset::{Self, FungibleAsset, Metadata};
     use aptos_framework::object::{Self, Object, ExtendRef, DeleteRef, ObjectGroup};
@@ -8,7 +9,8 @@ module fusion_plus::escrow {
     use fusion_plus::hashlock::{Self, HashLock};
     use fusion_plus::timelock::{Self, Timelock};
     use fusion_plus::fusion_order::{Self, FusionOrder};
-    // use fusion_plus::dutch_auction::{Self, DutchAuction};
+    use fusion_plus::dutch_auction::{Self, DutchAuction};
+    use std::vector;
 
     // - - - - ERROR CODES - - - -
 
@@ -24,6 +26,12 @@ module fusion_plus::escrow {
     const EOBJECT_DOES_NOT_EXIST: u64 = 5;
     /// Invalid hash.
     const EINVALID_HASH: u64 = 6;
+    /// Invalid fill type
+    const EINVALID_FILL_TYPE: u64 = 7;
+    /// Insufficient remaining amount
+    const EINSUFFICIENT_REMAINING: u64 = 8;
+    /// Invalid segment
+    const EINVALID_SEGMENT: u64 = 9;
 
     // - - - - EVENTS - - - -
 
@@ -87,78 +95,45 @@ module fusion_plus::escrow {
         hashlock: HashLock
     }
 
-    // - - - - ENTRY FUNCTIONS - - - -
-
-    public entry fun deploy_source_entry(
-        resolver: &signer, fusion_order: Object<FusionOrder>
-    ) {
-        deploy_source(resolver, fusion_order);
-    }
-
-
-    public entry fun deploy_destination_entry(
-        resolver: &signer,
-        order_hash: vector<u8>,
-        hash: vector<u8>,
-        taker: address,
-        metadata: Object<Metadata>,
-        amount: u64,
-        safety_deposit_amount: u64,
-        finality_duration: u64,
-        exclusive_duration: u64,
-        private_cancellation_duration: u64
-    ) {
-        deploy_destination(
-            resolver,
-            order_hash,
-            hash,
-            taker,
-            metadata,
-            amount,
-            safety_deposit_amount,
-            finality_duration,
-            exclusive_duration,
-            private_cancellation_duration
-        );
-    }
-
-    // public entry fun deploy_destination_with_auction_entry(
-    //     resolver: &signer,
-    //     auction: Object<DutchAuction>,
-    //     hash: vector<u8>,
-    //     safety_deposit_amount: u64,
-    //     finality_duration: u64,
-    //     exclusive_duration: u64,
-    //     private_cancellation_duration: u64
-    // ) {
-    //     deploy_destination_with_auction(
-    //         resolver,
-    //         auction,
-    //         hash,
-    //         safety_deposit_amount,
-    //         finality_duration,
-    //         exclusive_duration,
-    //         private_cancellation_duration
-    //     );
-    // }
-
     // - - - - PUBLIC FUNCTIONS - - - -
 
     /// Creates a new Escrow from a fusion order.
     /// This function is called when a resolver picks up a fusion order.
+    /// If fill_amount is None, the entire order is filled. Otherwise, only the specified amount is filled.
     ///
     /// @param resolver The signer of the resolver accepting the order.
     /// @param fusion_order The fusion order to convert to escrow.
+    /// @param fill_amount The amount to fill (None for full fill).
     ///
     /// @return Object<Escrow> The created escrow object.
     public fun deploy_source(
-        resolver: &signer, fusion_order: Object<FusionOrder>
+        resolver: &signer, fusion_order: Object<FusionOrder>, segment: Option<u64>
     ): Object<Escrow> {
-        // let owner_address = fusion_order::get_owner(fusion_order);
-        // let resolver_address = signer::address_of(resolver);
-        // let hash = fusion_order::get_hash(fusion_order);
         let (asset, safety_deposit_asset) =
-            fusion_order::resolver_accept_order(resolver, fusion_order);
+            fusion_order::resolver_accept_order(resolver, fusion_order, segment);
+
+        let segment_hash =
+            if (option::is_some(&segment)) {
+                fusion_order::get_hash_for_segment(
+                    fusion_order, *option::borrow(&segment)
+                )
+            } else {
+                // Use last hash for full fill
+                fusion_order::get_hash_for_segment(
+                    fusion_order, fusion_order::get_max_segments(fusion_order) - 1
+                )
+            };
+        if (option::is_some(&segment)) {
+            // Validate partial fill is allowed
+            assert!(
+                fusion_order::is_partial_fill_allowed(fusion_order),
+                EINVALID_FILL_TYPE
+            );
+
+            let max_segments = fusion_order::get_max_segments(fusion_order);
+            assert!(*option::borrow(&segment) < max_segments, EINVALID_SEGMENT);
+        };
+
         new(
             resolver,
             fusion_order::get_order_hash(fusion_order),
@@ -167,129 +142,77 @@ module fusion_plus::escrow {
             fusion_order::get_maker(fusion_order), // maker
             signer::address_of(resolver), // taker
             true, // is_source_chain
-            fusion_order::get_hash(fusion_order),
+            segment_hash,
             fusion_order::get_finality_duration(fusion_order),
             fusion_order::get_exclusive_duration(fusion_order),
             fusion_order::get_private_cancellation_duration(fusion_order)
         )
     }
 
-    /// Creates a new Escrow directly from a resolver.
-    /// This function is called when a resolver creates an escrow without a fusion order.
+    /// Creates a new Escrow using a Dutch auction for partial fills.
+    /// This function is called when a resolver creates a partial escrow for an ETH > APT order.
+    /// The amount is determined by the segment and current auction price.
     ///
     /// @param resolver The signer of the resolver creating the escrow.
-    /// @param recipient_address The address that can withdraw the escrow.
-    /// @param metadata The metadata of the asset being escrowed.
-    /// @param amount The amount of the asset being escrowed.
-    /// @param hash The hash of the secret for the cross-chain swap.
+    /// @param auction The Dutch auction that determines the price.
+    /// @param segment The segment to fill (0-9 for partial fills, 10 for full fill).
+    /// @param safety_deposit_amount The amount of safety deposit required.
+    /// @param finality_duration The finality duration for the escrow.
+    /// @param exclusive_duration The exclusive duration for the escrow.
+    /// @param private_cancellation_duration The private cancellation duration for the escrow.
     ///
-    /// @reverts EINVALID_AMOUNT if amount is zero.
+    /// @reverts EINVALID_AMOUNT if auction price is zero.
     /// @reverts EINSUFFICIENT_BALANCE if resolver has insufficient balance.
+    /// @reverts EINVALID_FILL_TYPE if partial fills are not allowed.
+    /// @reverts EINVALID_SEGMENT if segment is invalid.
     /// @return Object<Escrow> The created escrow object.
     public fun deploy_destination(
         resolver: &signer,
-        order_hash: vector<u8>,
-        hash: vector<u8>,
-        maker: address,
-        metadata: Object<Metadata>,
-        amount: u64,
-        safety_deposit_amount: u64,
+        auction: Object<DutchAuction>,
+        segment: Option<u64>,
         finality_duration: u64,
         exclusive_duration: u64,
         private_cancellation_duration: u64
     ): Object<Escrow> {
-        // Validate inputs
-        assert!(amount > 0, EINVALID_AMOUNT);
-        assert!(hashlock::is_valid_hash(&hash), EINVALID_HASH);
 
-        let asset = primary_fungible_store::withdraw(resolver, metadata, amount);
-
-        let safety_deposit_asset =
-            primary_fungible_store::withdraw(
-                resolver,
-                safety_deposit_metadata(),
-                safety_deposit_amount
+        // Validate partial fill is allowed
+        if (option::is_some(&segment)) {
+            assert!(
+                dutch_auction::is_partial_fill_allowed(auction), EINVALID_FILL_TYPE
             );
+        };
+
+        // Validate segment is valid (last segment is full fill)
+        let max_segments = dutch_auction::get_max_segments(auction);
+        let segment = *option::borrow_with_default(&segment, &(max_segments - 1));
+        assert!(segment < max_segments, EINVALID_SEGMENT);
+
+        // Fill the auction and get assets (this handles all validation and withdrawal)
+        let (asset, safety_deposit_asset) =
+            dutch_auction::fill_auction(resolver, auction, option::some<u64>(segment));
+
+        // Get auction details
+        let order_hash = dutch_auction::get_order_hash(auction);
+        let maker = dutch_auction::get_maker(auction);
+
+        // Get the segment hash for this partial fill
+        let segment_hash = dutch_auction::get_segment_hash(auction, segment);
+
+        // Create escrow with the assets from the auction
         new(
             resolver,
             order_hash,
             asset,
             safety_deposit_asset,
-            maker, // maker
-            signer::address_of(resolver), // taker
+            maker, // maker (from auction)
+            signer::address_of(resolver), // taker (resolver)
             false, // is_source_chain
-            hash,
+            segment_hash, // Use the segment hash for this partial fill
             finality_duration,
             exclusive_duration,
             private_cancellation_duration
         )
     }
-
-    // /// Creates a new Escrow using a Dutch auction to determine the price.
-    // /// This function is called when a resolver creates an escrow for an ETH > APT order.
-    // /// The amount is determined by the current auction price.
-    // ///
-    // /// @param resolver The signer of the resolver creating the escrow.
-    // /// @param auction The Dutch auction that determines the price.
-    // /// @param hash The hash of the secret for the cross-chain swap.
-    // /// @param taker The address that can withdraw the escrow.
-    // /// @param safety_deposit_amount The amount of safety deposit required.
-    // /// @param finality_duration The finality duration for the escrow.
-    // /// @param exclusive_duration The exclusive duration for the escrow.
-    // /// @param private_cancellation_duration The private cancellation duration for the escrow.
-    // ///
-    // /// @reverts EINVALID_AMOUNT if auction price is zero.
-    // /// @reverts EINSUFFICIENT_BALANCE if resolver has insufficient balance.
-    // /// @reverts EINVALID_HASH if the hash is invalid.
-    // /// @return Object<Escrow> The created escrow object.
-    // public fun deploy_destination_with_auction(
-    //     resolver: &signer,
-    //     auction: Object<DutchAuction>,
-    //     hash: vector<u8>,
-    //     safety_deposit_amount: u64,
-    //     finality_duration: u64,
-    //     exclusive_duration: u64,
-    //     private_cancellation_duration: u64
-    // ): Object<Escrow> {
-    //     // Validate inputs
-    //     assert!(hashlock::is_valid_hash(&hash), EINVALID_HASH);
-
-    //     // Get auction details
-    //     let order_hash = dutch_auction::get_order_hash(auction);
-    //     let metadata = dutch_auction::get_metadata(auction);
-    //     let current_price = dutch_auction::get_current_price(auction);
-    //     let taker = dutch_auction::get_taker(auction);
-
-    //     // Validate auction price
-    //     assert!(current_price > 0, EINVALID_AMOUNT);
-
-    //     // Fill the auction to get the fill price
-    //     let fill_price = dutch_auction::fill_auction(resolver, auction);
-
-    //     // Withdraw the auction-determined amount from resolver
-    //     let asset = primary_fungible_store::withdraw(resolver, metadata, fill_price);
-
-    //     let safety_deposit_asset =
-    //         primary_fungible_store::withdraw(
-    //             resolver,
-    //             safety_deposit_metadata(),
-    //             safety_deposit_amount
-    //         );
-
-    //     new(
-    //         resolver,
-    //         order_hash,
-    //         asset,
-    //         safety_deposit_asset,
-    //         signer::address_of(resolver), // maker TODO: change to resolver
-    //         taker, // taker TODO: change to resolver
-    //         false, // is_source_chain
-    //         hash,
-    //         finality_duration,
-    //         exclusive_duration,
-    //         private_cancellation_duration
-    //     )
-    // }
 
     /// Internal function to create a new Escrow with the specified parameters.
     ///
@@ -328,9 +251,10 @@ module fusion_plus::escrow {
             EscrowController { extend_ref, delete_ref }
         );
 
-        let timelock = timelock::new_from_durations(
-            finality_duration, exclusive_duration, private_cancellation_duration
-        );
+        let timelock =
+            timelock::new_from_durations(
+                finality_duration, exclusive_duration, private_cancellation_duration
+            );
         let hashlock = hashlock::create_hashlock(hash);
 
         let metadata = fungible_asset::metadata_from_asset(&asset);
@@ -414,21 +338,17 @@ module fusion_plus::escrow {
 
         let object_signer = object::generate_signer_for_extending(&extend_ref);
 
-        let withdraw_to = if (escrow_ref.is_source_chain) {
-            escrow_ref.taker
-        } else {
-            escrow_ref.maker
-        };
+        let withdraw_to =
+            if (escrow_ref.is_source_chain) {
+                escrow_ref.taker
+            } else {
+                escrow_ref.maker
+            };
         let metadata = escrow_ref.metadata;
         let amount = escrow_ref.amount;
         let safety_deposit_amount = escrow_ref.safety_deposit_amount;
 
-        primary_fungible_store::transfer(
-            &object_signer,
-            metadata,
-            withdraw_to,
-            amount
-        );
+        primary_fungible_store::transfer(&object_signer, metadata, withdraw_to, amount);
 
         primary_fungible_store::transfer(
             &object_signer,
@@ -486,11 +406,12 @@ module fusion_plus::escrow {
 
         // Store event data before deletion
         let resolver = signer_address;
-        let recover_to = if (escrow_ref.is_source_chain) {
-            escrow_ref.maker
-        } else {
-            escrow_ref.taker
-        };
+        let recover_to =
+            if (escrow_ref.is_source_chain) {
+                escrow_ref.maker
+            } else {
+                escrow_ref.taker
+            };
         let metadata = escrow_ref.metadata;
         let amount = escrow_ref.amount;
 
@@ -656,9 +577,7 @@ module fusion_plus::escrow {
     ///
     /// @reverts EOBJECT_DOES_NOT_EXIST if the escrow does not exist.
     /// @return bool True if the secret matches the hashlock, false otherwise.
-    public fun verify_secret(
-        escrow: Object<Escrow>, secret: vector<u8>
-    ) : bool acquires Escrow {
+    public fun verify_secret(escrow: Object<Escrow>, secret: vector<u8>): bool acquires Escrow {
         assert!(escrow_exists(escrow), EOBJECT_DOES_NOT_EXIST);
         let escrow_ref = borrow_escrow(&escrow);
 
