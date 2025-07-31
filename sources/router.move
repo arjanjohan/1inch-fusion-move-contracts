@@ -4,7 +4,6 @@ module fusion_plus::router {
     use aptos_framework::fungible_asset::{Metadata};
     use fusion_plus::escrow;
     use aptos_framework::object::{Object};
-    use aptos_framework::signer;
     use std::option::{Self, Option};
 
     // - - - - DUTCH AUCTION FUNCTIONS - - - -

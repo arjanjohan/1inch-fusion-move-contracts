@@ -2,7 +2,7 @@
 module fusion_plus::escrow_source_chain_tests {
     use aptos_std::aptos_hash;
     use std::bcs;
-    use std::option::{Self, Option};
+    use std::option::{Self};
     use std::signer;
     use std::vector;
     use aptos_framework::account;
@@ -14,7 +14,6 @@ module fusion_plus::escrow_source_chain_tests {
     use fusion_plus::fusion_order::{Self, FusionOrder};
     use fusion_plus::common;
     use fusion_plus::timelock::{Self};
-    use fusion_plus::hashlock::{Self};
 
     // Test amounts
     const MINT_AMOUNT: u64 = 10000000000; // 100 token
@@ -689,5 +688,728 @@ module fusion_plus::escrow_source_chain_tests {
                     + (SAFETY_DEPOSIT_AMOUNT * 3) / 10,
             0
         );
+    }
+
+    // - - - - ADDITIONAL ERROR AND EDGE CASE TESTS - - - -
+
+    #[test]
+    #[expected_failure(abort_code = fusion_order::EINVALID_RESOLVER)]
+    fun test_source_chain_non_whitelisted_resolver() {
+        let (owner, _, _, resolver_1, resolver_2, _, metadata, _) = setup_test();
+
+        // Create a fusion order with whitelist only containing resolver_1
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Try to create escrow with non-whitelisted resolver_2
+        escrow::deploy_source(&resolver_2, fusion_order, option::none());
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EINVALID_FILL_TYPE)]
+    fun test_source_chain_partial_fill_not_allowed() {
+        let (owner, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a fusion order with single hash (no partial fills allowed)
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Try to create escrow with partial fill (should fail)
+        escrow::deploy_source(&resolver_1, fusion_order, option::some(0));
+    }
+
+    #[test]
+    #[expected_failure(abort_code = fusion_order::EINVALID_SEGMENT)]
+    fun test_source_chain_invalid_segment_out_of_bounds() {
+        let (owner, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a fusion order with 5 hashes (segments 0-4)
+        let hashes = create_test_hashes(5);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Try to create escrow with segment 5 (out of bounds)
+        escrow::deploy_source(&resolver_1, fusion_order, option::some(5));
+    }
+
+    #[test]
+    #[expected_failure(abort_code = fusion_order::ESEGMENT_ALREADY_FILLED)]
+    fun test_source_chain_segment_already_filled() {
+        let (owner, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a fusion order with multiple hashes
+        let hashes = create_test_hashes(11);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Fill segments 0-2
+        escrow::deploy_source(&resolver_1, fusion_order, option::some(2));
+
+        // Try to fill segments 0-1 again (should fail - already filled)
+        escrow::deploy_source(&resolver_1, fusion_order, option::some(1));
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EINVALID_PHASE)]
+    fun test_source_chain_withdrawal_during_finality_phase() {
+        let (owner, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a fusion order
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Create escrow
+        let escrow = escrow::deploy_source(&resolver_1, fusion_order, option::none());
+
+        // Try to withdraw during finality phase (should fail)
+        let secret_0 = vector::empty<u8>();
+        vector::append(&mut secret_0, b"secret_");
+        vector::append(&mut secret_0, bcs::to_bytes(&0u64));
+        escrow::withdraw(&resolver_1, escrow, secret_0);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EINVALID_PHASE)]
+    fun test_source_chain_withdrawal_during_private_cancellation_phase() {
+        let (owner, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a fusion order
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Create escrow
+        let escrow = escrow::deploy_source(&resolver_1, fusion_order, option::none());
+
+        // Fast forward to private cancellation phase
+        let timelock = escrow::get_timelock(escrow);
+        let (finality_duration, exclusive_duration, _) =
+            timelock::get_durations(&timelock);
+        timestamp::update_global_time_for_test_secs(
+            timelock::get_created_at(&timelock) + finality_duration
+                + exclusive_duration + 1
+        );
+
+        // Try to withdraw during private cancellation phase (should fail)
+        let secret_0 = vector::empty<u8>();
+        vector::append(&mut secret_0, b"secret_");
+        vector::append(&mut secret_0, bcs::to_bytes(&0u64));
+        escrow::withdraw(&resolver_1, escrow, secret_0);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EINVALID_SECRET)]
+    fun test_source_chain_withdrawal_wrong_secret() {
+        let (owner, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a fusion order
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Create escrow
+        let escrow = escrow::deploy_source(&resolver_1, fusion_order, option::none());
+
+        // Fast forward to exclusive phase
+        let timelock = escrow::get_timelock(escrow);
+        let (finality_duration, _, _) = timelock::get_durations(&timelock);
+        timestamp::update_global_time_for_test_secs(
+            timelock::get_created_at(&timelock) + finality_duration + 1
+        );
+
+        // Try to withdraw with wrong secret
+        escrow::withdraw(&resolver_1, escrow, WRONG_SECRET);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EINVALID_CALLER)]
+    fun test_source_chain_withdrawal_wrong_caller() {
+        let (owner, _, _, resolver_1, resolver_2, _, metadata, _) = setup_test();
+
+        // Create a fusion order
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Create escrow
+        let escrow = escrow::deploy_source(&resolver_1, fusion_order, option::none());
+
+        // Fast forward to exclusive phase
+        let timelock = escrow::get_timelock(escrow);
+        let (finality_duration, _, _) = timelock::get_durations(&timelock);
+        timestamp::update_global_time_for_test_secs(
+            timelock::get_created_at(&timelock) + finality_duration + 1
+        );
+
+        // Try to withdraw with wrong caller
+        let secret_0 = vector::empty<u8>();
+        vector::append(&mut secret_0, b"secret_");
+        vector::append(&mut secret_0, bcs::to_bytes(&0u64));
+        escrow::withdraw(&resolver_2, escrow, secret_0);
+    }
+
+    #[test]
+    fun test_source_chain_escrow_recovery_private_cancellation() {
+        let (owner, _, _, resolver_1, _, _, metadata, _) = setup_test();
+        let owner_address = signer::address_of(&owner);
+        let resolver_address = signer::address_of(&resolver_1);
+
+        // Create a fusion order
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        // Record initial balances
+        let initial_owner_balance =
+            primary_fungible_store::balance(owner_address, metadata);
+        let initial_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(
+                resolver_address, object::address_to_object<Metadata>(@0xa)
+            );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Create escrow
+        let escrow = escrow::deploy_source(&resolver_1, fusion_order, option::none());
+
+        // Fast forward to private cancellation phase
+        let timelock = escrow::get_timelock(escrow);
+        let (finality_duration, exclusive_duration, _) =
+            timelock::get_durations(&timelock);
+        timestamp::update_global_time_for_test_secs(
+            timelock::get_created_at(&timelock) + finality_duration
+                + exclusive_duration + 1
+        );
+
+        // Recover escrow (only resolver can do this in private cancellation)
+        escrow::recovery(&resolver_1, escrow);
+
+        // Verify resolver received the assets back
+        let final_owner_balance = primary_fungible_store::balance(
+            owner_address, metadata
+        );
+        assert!(final_owner_balance == initial_owner_balance, 0);
+
+        // Verify resolver received safety deposit back
+        let final_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(
+                resolver_address, object::address_to_object<Metadata>(@0xa)
+            );
+        assert!(
+            final_resolver_safety_deposit_balance
+                == initial_resolver_safety_deposit_balance + SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EINVALID_CALLER)]
+    fun test_source_chain_escrow_recovery_private_cancellation_wrong_caller() {
+        let (owner, _, _, resolver_1, resolver_2, _, metadata, _) = setup_test();
+
+        // Create a fusion order
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Create escrow
+        let escrow = escrow::deploy_source(&resolver_1, fusion_order, option::none());
+
+        // Fast forward to private cancellation phase
+        let timelock = escrow::get_timelock(escrow);
+        let (finality_duration, exclusive_duration, _) =
+            timelock::get_durations(&timelock);
+        timestamp::update_global_time_for_test_secs(
+            timelock::get_created_at(&timelock) + finality_duration
+                + exclusive_duration + 1
+        );
+
+        // Try to recover with wrong caller (only resolver can do this in private cancellation)
+        escrow::recovery(&resolver_2, escrow);
+    }
+
+    #[test]
+    fun test_source_chain_escrow_recovery_public_cancellation() {
+        let (owner, random_account, _, resolver_1, _, _, metadata, _) = setup_test();
+        let owner_address = signer::address_of(&owner);
+        let resolver_address = signer::address_of(&resolver_1);
+        let random_account_address = signer::address_of(&random_account);
+
+        // Create a fusion order
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Create escrow
+        let escrow = escrow::deploy_source(&resolver_1, fusion_order, option::none());
+
+        // Record initial balances
+        let initial_owner_balance =
+            primary_fungible_store::balance(owner_address, metadata);
+        let initial_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(
+                resolver_address, object::address_to_object<Metadata>(@0xa)
+            );
+        let initial_random_account_safety_deposit_balance =
+            primary_fungible_store::balance(
+                random_account_address, object::address_to_object<Metadata>(@0xa)
+            );
+
+        // Fast forward to public cancellation phase
+        let timelock = escrow::get_timelock(escrow);
+        let (finality_duration, exclusive_duration, private_cancellation_duration) =
+            timelock::get_durations(&timelock);
+        timestamp::update_global_time_for_test_secs(
+            timelock::get_created_at(&timelock) + finality_duration
+                + exclusive_duration + private_cancellation_duration + 1
+        );
+
+        // Anyone can recover during public cancellation phase
+        escrow::recovery(&random_account, escrow);
+
+        let final_owner_balance = primary_fungible_store::balance(
+            owner_address, metadata
+        );
+        let final_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(
+                resolver_address, object::address_to_object<Metadata>(@0xa)
+            );
+        let final_random_account_safety_deposit_balance =
+            primary_fungible_store::balance(
+                random_account_address, object::address_to_object<Metadata>(@0xa)
+            );
+
+        // Verify resolver received the assets back
+        assert!(
+            final_owner_balance == initial_owner_balance + ASSET_AMOUNT,
+            0
+        );
+        // Verify resolver did not receive safety deposit back
+        assert!(
+            final_resolver_safety_deposit_balance
+                == initial_resolver_safety_deposit_balance,
+            0
+        );
+        // Verify random account received safety deposit back
+        assert!(
+            final_random_account_safety_deposit_balance
+                == initial_random_account_safety_deposit_balance
+                    + SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EOBJECT_DOES_NOT_EXIST)]
+    fun test_source_chain_withdrawal_nonexistent_escrow() {
+        let (owner, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a fusion order
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Create escrow
+        let escrow = escrow::deploy_source(&resolver_1, fusion_order, option::none());
+
+        // Fast forward to exclusive phase
+        let timelock = escrow::get_timelock(escrow);
+        let (finality_duration, _, _) = timelock::get_durations(&timelock);
+        timestamp::update_global_time_for_test_secs(
+            timelock::get_created_at(&timelock) + finality_duration + 1
+        );
+
+        // Withdraw the escrow (deletes it)
+        let secret_0 = vector::empty<u8>();
+        vector::append(&mut secret_0, b"secret_");
+        vector::append(&mut secret_0, bcs::to_bytes(&0u64));
+        escrow::withdraw(&resolver_1, escrow, secret_0);
+
+        // Try to withdraw the same escrow again (should fail)
+        escrow::withdraw(&resolver_1, escrow, secret_0);
+    }
+
+    #[test]
+    fun test_source_chain_multiple_resolvers_conflict() {
+        let (owner, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a fusion order with multiple hashes
+        let hashes = create_test_hashes(11);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // First resolver fills segments 0-2
+        let escrow1 = escrow::deploy_source(&resolver_1, fusion_order, option::some(2));
+        let escrow1_address = object::object_address(&escrow1);
+
+        // Verify first escrow properties
+        assert!(
+            escrow::get_amount(escrow1) == (ASSET_AMOUNT * 3) / 10,
+            0
+        );
+        assert!(
+            escrow::get_safety_deposit_amount(escrow1)
+                == (SAFETY_DEPOSIT_AMOUNT * 3) / 10,
+            0
+        );
+        assert!(escrow::get_maker(escrow1) == signer::address_of(&owner), 0);
+        assert!(escrow::get_taker(escrow1) == signer::address_of(&resolver_1), 0);
+        assert!(escrow::is_source_chain(escrow1) == true, 0);
+
+        // Verify escrow exists
+        assert!(object::object_exists<Escrow>(escrow1_address) == true, 0);
+
+        // Fusion order should still exist (not completely filled)
+        let fusion_order_address = object::object_address(&fusion_order);
+        assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
+    }
+
+    #[test]
+    fun test_source_chain_large_amount_withdrawal() {
+        let (owner, _, _, resolver_1, _, _, metadata, mint_ref) = setup_test();
+
+        let large_amount = 1000000000000; // 1M tokens
+
+        // Mint large amount to owner
+        common::mint_fa(&mint_ref, large_amount, signer::address_of(&owner));
+
+        // Create a fusion order with large amount
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                large_amount,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Create escrow
+        let escrow = escrow::deploy_source(&resolver_1, fusion_order, option::none());
+
+        // Fast forward to exclusive phase
+        let timelock = escrow::get_timelock(escrow);
+        let (finality_duration, _, _) = timelock::get_durations(&timelock);
+        timestamp::update_global_time_for_test_secs(
+            timelock::get_created_at(&timelock) + finality_duration + 1
+        );
+
+        // Record initial balances
+        let initial_resolver_balance =
+            primary_fungible_store::balance(signer::address_of(&resolver_1), metadata);
+
+        // Withdraw large amount
+        let secret_0 = vector::empty<u8>();
+        vector::append(&mut secret_0, b"secret_");
+        vector::append(&mut secret_0, bcs::to_bytes(&0u64));
+        escrow::withdraw(&resolver_1, escrow, secret_0);
+
+        // Verify resolver received the large amount
+        let final_resolver_balance =
+            primary_fungible_store::balance(signer::address_of(&resolver_1), metadata);
+        assert!(
+            final_resolver_balance == initial_resolver_balance + large_amount,
+            0
+        );
+    }
+
+    #[test]
+    fun test_source_chain_sequential_partial_fills() {
+        let (owner, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a fusion order with multiple hashes
+        let hashes = create_test_hashes(11);
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        let fusion_order_address = object::object_address(&fusion_order);
+
+        // Sequential partial fills: 0, 1, 2, 3, 4
+        let escrow1 = escrow::deploy_source(&resolver_1, fusion_order, option::some(0));
+        let escrow2 = escrow::deploy_source(&resolver_1, fusion_order, option::some(1));
+        let escrow3 = escrow::deploy_source(&resolver_1, fusion_order, option::some(2));
+        let escrow4 = escrow::deploy_source(&resolver_1, fusion_order, option::some(3));
+        let escrow5 = escrow::deploy_source(&resolver_1, fusion_order, option::some(4));
+
+        // Verify all escrows exist
+        assert!(
+            object::object_exists<Escrow>(object::object_address(&escrow1)) == true,
+            0
+        );
+        assert!(
+            object::object_exists<Escrow>(object::object_address(&escrow2)) == true,
+            0
+        );
+        assert!(
+            object::object_exists<Escrow>(object::object_address(&escrow3)) == true,
+            0
+        );
+        assert!(
+            object::object_exists<Escrow>(object::object_address(&escrow4)) == true,
+            0
+        );
+        assert!(
+            object::object_exists<Escrow>(object::object_address(&escrow5)) == true,
+            0
+        );
+
+        // Verify amounts are correct
+        assert!(
+            escrow::get_amount(escrow1) == ASSET_AMOUNT / 10,
+            0
+        );
+        assert!(
+            escrow::get_amount(escrow2) == ASSET_AMOUNT / 10,
+            0
+        );
+        assert!(
+            escrow::get_amount(escrow3) == ASSET_AMOUNT / 10,
+            0
+        );
+        assert!(
+            escrow::get_amount(escrow4) == ASSET_AMOUNT / 10,
+            0
+        );
+        assert!(
+            escrow::get_amount(escrow5) == ASSET_AMOUNT / 10,
+            0
+        );
+
+        // Fusion order should still exist (not completely filled)
+        assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
     }
 }

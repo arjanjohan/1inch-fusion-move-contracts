@@ -4,7 +4,7 @@ module fusion_plus::fusion_order_tests {
     use std::bcs;
     use std::signer;
     use std::vector;
-    use std::option::{Self, Option};
+    use std::option::{Self};
     use aptos_framework::account;
     use aptos_framework::fungible_asset::{Self, Metadata, MintRef};
     use aptos_framework::object::{Self, Object};
@@ -330,14 +330,6 @@ module fusion_plus::fusion_order_tests {
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
         assert!(!fusion_order::is_completely_filled(fusion_order), 0);
 
-        // Log initial balances
-        let initial_main_balance =
-            primary_fungible_store::balance(fusion_order_address, metadata);
-        let initial_safety_balance =
-            primary_fungible_store::balance(
-                fusion_order_address, safety_deposit_metadata()
-            );
-
         // First partial fill: segments 0-2 (3 segments)
         let (main_asset1, safety_deposit_asset1) =
             fusion_order::resolver_accept_order(
@@ -440,14 +432,6 @@ module fusion_plus::fusion_order_tests {
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
         assert!(!fusion_order::is_completely_filled(fusion_order), 0);
 
-        // Log initial balances
-        let initial_main_balance =
-            primary_fungible_store::balance(fusion_order_address, metadata);
-        let initial_safety_balance =
-            primary_fungible_store::balance(
-                fusion_order_address, safety_deposit_metadata()
-            );
-
         // First partial fill: segments 0-2 (3 segments)
         let (main_asset1, safety_deposit_asset1) =
             fusion_order::resolver_accept_order(
@@ -474,14 +458,6 @@ module fusion_plus::fusion_order_tests {
         let last_filled_segment = fusion_order::get_last_filled_segment(fusion_order);
         assert!(last_filled_segment == option::some<u64>(2), 0);
 
-        // Log balances before second fill
-        let second_main_balance =
-            primary_fungible_store::balance(fusion_order_address, metadata);
-        let second_safety_balance =
-            primary_fungible_store::balance(
-                fusion_order_address, safety_deposit_metadata()
-            );
-
         // Second partial fill: segments 3-5 (3 segments)
         let (main_asset2, safety_deposit_asset2) =
             fusion_order::resolver_accept_order(
@@ -507,14 +483,6 @@ module fusion_plus::fusion_order_tests {
         // Clean up second assets
         primary_fungible_store::deposit(@0x0, main_asset2);
         primary_fungible_store::deposit(@0x0, safety_deposit_asset2);
-
-        // Log balances before final fill
-        let final_main_balance =
-            primary_fungible_store::balance(fusion_order_address, metadata);
-        let final_safety_balance =
-            primary_fungible_store::balance(
-                fusion_order_address, safety_deposit_metadata()
-            );
 
         // Final fill: segments 6-10 (5 segments, completing the order) - THIS SHOULD FAIL
         // The last segment (10) is reserved for 100% fill only
@@ -1122,7 +1090,6 @@ module fusion_plus::fusion_order_tests {
 
         // Add additional resolver
         let resolver2 = account::create_account_for_test(@0x204);
-        let fusion_signer = account::create_account_for_test(@fusion_plus);
 
         let hashes1 = create_test_hashes(1);
         let hashes2 = create_test_hashes(1);
@@ -1522,5 +1489,528 @@ module fusion_plus::fusion_order_tests {
         // Test with deleted order
         fusion_order::delete_for_test(fusion_order);
         assert!(fusion_order::order_exists(fusion_order) == false, 0);
+    }
+
+    // - - - - RESOLVER CANCELLATION TESTS - - - -
+
+    #[test]
+    fun test_resolver_cancel_happy_flow() {
+        let (owner, _, resolver, metadata, _) = setup_test();
+        let owner_address = signer::address_of(&owner);
+        let resolver_address = signer::address_of(&resolver);
+
+        // Record initial balances
+        let initial_owner_balance =
+            primary_fungible_store::balance(owner_address, metadata);
+        let initial_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let initial_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(resolver_address, safety_deposit_metadata());
+
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(resolver_address);
+        let auto_cancel_after = option::some<u64>(timestamp::now_seconds() + 3600); // 1 hour
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Record balances after order creation
+        let after_creation_owner_balance =
+            primary_fungible_store::balance(owner_address, metadata);
+        let after_creation_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let after_creation_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(resolver_address, safety_deposit_metadata());
+
+        // Verify balances after order creation
+        assert!(
+            after_creation_owner_balance == initial_owner_balance - ASSET_AMOUNT,
+            0
+        );
+        assert!(
+            after_creation_owner_safety_deposit_balance
+                == initial_owner_safety_deposit_balance - SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+        assert!(
+            after_creation_resolver_safety_deposit_balance
+                == initial_resolver_safety_deposit_balance,
+            0
+        );
+
+        let fusion_order_address = object::object_address(&fusion_order);
+
+        // Verify the object exists
+        assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
+
+        // Fast forward to after auto-cancel timestamp
+        timestamp::update_global_time_for_test_secs(timestamp::now_seconds() + 7200); // 2 hours later
+
+        // Resolver cancels the order
+        fusion_order::cancel(&resolver, fusion_order);
+
+        // Verify the object is deleted
+        assert!(object::object_exists<FusionOrder>(fusion_order_address) == false, 0);
+
+        // Record final balances
+        let final_owner_balance = primary_fungible_store::balance(
+            owner_address, metadata
+        );
+        let final_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let final_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(resolver_address, safety_deposit_metadata());
+
+        // Verify final balances
+        assert!(final_owner_balance == initial_owner_balance, 0);
+        assert!(
+            final_owner_safety_deposit_balance
+                == initial_owner_safety_deposit_balance - SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+        assert!(
+            final_resolver_safety_deposit_balance
+                == initial_resolver_safety_deposit_balance + SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+
+    }
+
+    #[test]
+    fun test_resolver_cancel_partial_filled_order() {
+        let (owner, _, resolver, metadata, _) = setup_test();
+        let owner_address = signer::address_of(&owner);
+        let resolver_address = signer::address_of(&resolver);
+
+        // Record initial balances
+        let initial_owner_balance =
+            primary_fungible_store::balance(owner_address, metadata);
+        let initial_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let initial_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(resolver_address, safety_deposit_metadata());
+
+        let hashes = create_test_hashes(11); // Multiple hashes for partial fills
+        let resolver_whitelist = create_resolver_whitelist(resolver_address);
+        let auto_cancel_after = option::some<u64>(timestamp::now_seconds() + 3600); // 1 hour
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        let fusion_order_address = object::object_address(&fusion_order);
+
+        // Verify the object exists
+        assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
+
+        // Partially fill the order (segments 0-2)
+        let (main_asset, safety_deposit_asset) =
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(2)
+            );
+
+        // Clean up assets from partial fill
+        primary_fungible_store::deposit(@0x0, main_asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+
+        // Verify order still exists after partial fill
+        assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
+
+        // Fast forward to after auto-cancel timestamp
+        timestamp::update_global_time_for_test_secs(timestamp::now_seconds() + 7200); // 2 hours later
+
+        // Resolver cancels the partially filled order
+        fusion_order::cancel(&resolver, fusion_order);
+
+        // Verify the object is deleted
+        assert!(object::object_exists<FusionOrder>(fusion_order_address) == false, 0);
+
+        // Record final balances
+        let final_owner_balance = primary_fungible_store::balance(
+            owner_address, metadata
+        );
+        let final_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let final_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(resolver_address, safety_deposit_metadata());
+
+        // Verify final balances
+        // Owner gets back their initial amount (minus what was already filled)
+        assert!(
+            final_owner_balance == initial_owner_balance - (ASSET_AMOUNT * 3) / 10,
+            0
+        );
+        // Owner loses their safety deposit because the resolver cancelled the order
+        assert!(
+            final_owner_safety_deposit_balance
+                == initial_owner_safety_deposit_balance - SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+        // Resolver gets the remaining safety deposit
+        assert!(
+            final_resolver_safety_deposit_balance
+                == initial_resolver_safety_deposit_balance
+                    + (SAFETY_DEPOSIT_AMOUNT * 7) / 10,
+            0
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = fusion_order::ENOT_IN_RESOLVER_CANCELLATION_PERIOD)]
+    fun test_resolver_cancel_before_auto_cancel_timestamp() {
+        let (owner, _, resolver, metadata, _) = setup_test();
+
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
+        let auto_cancel_after = option::some<u64>(timestamp::now_seconds() + 3600); // 1 hour
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Try to cancel before auto-cancel timestamp (should fail)
+        fusion_order::cancel(&resolver, fusion_order);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = fusion_order::ENOT_IN_RESOLVER_CANCELLATION_PERIOD)]
+    fun test_resolver_cancel_no_auto_cancel_enabled() {
+        let (owner, _, resolver, metadata, _) = setup_test();
+
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
+        let auto_cancel_after = option::none(); // No auto-cancel
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Try to cancel when auto-cancel is not enabled (should fail)
+        fusion_order::cancel(&resolver, fusion_order);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = fusion_order::EINVALID_CALLER)]
+    fun test_resolver_cancel_wrong_resolver() {
+        let (owner, _, resolver, metadata, _) = setup_test();
+
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
+        let auto_cancel_after = option::some<u64>(timestamp::now_seconds() + 3600); // 1 hour
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Create a different resolver not in the whitelist
+        let wrong_resolver = account::create_account_for_test(@0x999);
+
+        // Fast forward to after auto-cancel timestamp
+        timestamp::update_global_time_for_test_secs(timestamp::now_seconds() + 7200); // 2 hours later
+
+        // Wrong resolver tries to cancel the order (should fail)
+        fusion_order::cancel(&wrong_resolver, fusion_order);
+    }
+
+    #[test]
+    fun test_resolver_cancel_multiple_resolvers() {
+        let (owner, _, resolver1, metadata, _) = setup_test();
+        let owner_address = signer::address_of(&owner);
+        let resolver1_address = signer::address_of(&resolver1);
+
+        // Create additional resolver
+        let resolver2 = account::create_account_for_test(@0x204);
+        let resolver2_address = signer::address_of(&resolver2);
+
+        // Record initial balances
+        let initial_owner_balance =
+            primary_fungible_store::balance(owner_address, metadata);
+        let initial_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let initial_resolver1_safety_deposit_balance =
+            primary_fungible_store::balance(
+                resolver1_address, safety_deposit_metadata()
+            );
+        let initial_resolver2_safety_deposit_balance =
+            primary_fungible_store::balance(
+                resolver2_address, safety_deposit_metadata()
+            );
+
+        let hashes1 = create_test_hashes(1);
+        let hashes2 = create_test_hashes(1);
+        let resolver_whitelist1 = create_resolver_whitelist(resolver1_address);
+        let resolver_whitelist2 = create_resolver_whitelist(resolver2_address);
+        let auto_cancel_after = option::some<u64>(timestamp::now_seconds() + 3600); // 1 hour
+
+        let fusion_order1 =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes1,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist1,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        let order_hash2: vector<u8> = b"order_hash_456";
+        let fusion_order2 =
+            fusion_order::new(
+                &owner,
+                order_hash2,
+                hashes2,
+                metadata,
+                ASSET_AMOUNT * 2,
+                resolver_whitelist2,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Fast forward to after auto-cancel timestamp
+        timestamp::update_global_time_for_test_secs(timestamp::now_seconds() + 7200); // 2 hours later
+
+        // Each resolver cancels their own order
+        fusion_order::cancel(&resolver1, fusion_order1);
+        fusion_order::cancel(&resolver2, fusion_order2);
+
+        // Record final balances
+        let final_owner_balance = primary_fungible_store::balance(
+            owner_address, metadata
+        );
+        let final_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let final_resolver1_safety_deposit_balance =
+            primary_fungible_store::balance(
+                resolver1_address, safety_deposit_metadata()
+            );
+        let final_resolver2_safety_deposit_balance =
+            primary_fungible_store::balance(
+                resolver2_address, safety_deposit_metadata()
+            );
+
+        // Verify final balances
+        // Owner gets back their initial amounts
+        assert!(final_owner_balance == initial_owner_balance, 0);
+        // Owner loses their safety deposit because the resolvers cancelled the orders
+        assert!(
+            final_owner_safety_deposit_balance
+                == initial_owner_safety_deposit_balance - SAFETY_DEPOSIT_AMOUNT * 2,
+            0
+        );
+        // Each resolver gets the safety deposit
+        assert!(
+            final_resolver1_safety_deposit_balance
+                == initial_resolver1_safety_deposit_balance + SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+        assert!(
+            final_resolver2_safety_deposit_balance
+                == initial_resolver2_safety_deposit_balance + SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+    }
+
+    #[test]
+    fun test_resolver_cancel_large_amount() {
+        let (owner, _, resolver, metadata, mint_ref) = setup_test();
+        let owner_address = signer::address_of(&owner);
+        let resolver_address = signer::address_of(&resolver);
+
+        let large_amount = 1000000000000; // 1M tokens
+
+        // Mint large amount to owner
+        common::mint_fa(&mint_ref, large_amount, owner_address);
+
+        // Record initial balances
+        let initial_owner_balance =
+            primary_fungible_store::balance(owner_address, metadata);
+        let initial_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let initial_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(resolver_address, safety_deposit_metadata());
+
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(resolver_address);
+        let auto_cancel_after = option::some<u64>(timestamp::now_seconds() + 3600); // 1 hour
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                large_amount,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        // Fast forward to after auto-cancel timestamp
+        timestamp::update_global_time_for_test_secs(timestamp::now_seconds() + 7200); // 2 hours later
+
+        // Resolver cancels the order
+        fusion_order::cancel(&resolver, fusion_order);
+
+        // Record final balances
+        let final_owner_balance = primary_fungible_store::balance(
+            owner_address, metadata
+        );
+        let final_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let final_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(resolver_address, safety_deposit_metadata());
+
+        // Verify final balances
+        // Owner gets back their large amount
+        assert!(final_owner_balance == initial_owner_balance, 0);
+        // Owner gets back their safety deposit
+        assert!(
+            final_owner_safety_deposit_balance
+                == initial_owner_safety_deposit_balance - SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+        // Resolver gets the safety deposit
+        assert!(
+            final_resolver_safety_deposit_balance
+                == initial_resolver_safety_deposit_balance + SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+    }
+
+    #[test]
+    fun test_resolver_cancel_auto_cancel_timestamp_edge_case() {
+        let (owner, _, resolver, metadata, _) = setup_test();
+        let owner_address = signer::address_of(&owner);
+        let resolver_address = signer::address_of(&resolver);
+
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(resolver_address);
+        let current_time = timestamp::now_seconds();
+        let auto_cancel_after = option::some<u64>(current_time + 3600); // 1 hour
+
+        // Record initial balances
+        let initial_owner_balance =
+            primary_fungible_store::balance(owner_address, metadata);
+        let initial_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let initial_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(resolver_address, safety_deposit_metadata());
+
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
+
+        let fusion_order_address = object::object_address(&fusion_order);
+
+        // Fast forward to exactly the auto-cancel timestamp
+        timestamp::update_global_time_for_test_secs(current_time + 3600);
+
+        // Resolver cancels the order at exactly the auto-cancel timestamp
+        fusion_order::cancel(&resolver, fusion_order);
+
+        // Verify the object is deleted
+        assert!(object::object_exists<FusionOrder>(fusion_order_address) == false, 0);
+
+        // Record final balances
+        let final_owner_balance = primary_fungible_store::balance(
+            owner_address, metadata
+        );
+        let final_owner_safety_deposit_balance =
+            primary_fungible_store::balance(owner_address, safety_deposit_metadata());
+        let final_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(resolver_address, safety_deposit_metadata());
+
+        // Verify final balances
+        // Owner gets back their initial amount
+        assert!(final_owner_balance == initial_owner_balance, 0);
+        // Owner gets back their safety deposit
+        assert!(
+            final_owner_safety_deposit_balance
+                == initial_owner_safety_deposit_balance - SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
+        // Resolver gets the safety deposit
+        assert!(
+            final_resolver_safety_deposit_balance
+                == initial_resolver_safety_deposit_balance + SAFETY_DEPOSIT_AMOUNT,
+            0
+        );
     }
 }

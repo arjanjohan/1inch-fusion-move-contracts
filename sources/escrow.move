@@ -10,7 +10,7 @@ module fusion_plus::escrow {
     use fusion_plus::timelock::{Self, Timelock};
     use fusion_plus::fusion_order::{Self, FusionOrder};
     use fusion_plus::dutch_auction::{Self, DutchAuction};
-    use std::vector;
+    // use std::vector;
 
     // - - - - ERROR CODES - - - -
 
@@ -109,8 +109,6 @@ module fusion_plus::escrow {
     public fun deploy_source(
         resolver: &signer, fusion_order: Object<FusionOrder>, segment: Option<u64>
     ): Object<Escrow> {
-        let (asset, safety_deposit_asset) =
-            fusion_order::resolver_accept_order(resolver, fusion_order, segment);
 
         let segment_hash =
             if (option::is_some(&segment)) {
@@ -133,6 +131,9 @@ module fusion_plus::escrow {
             let max_segments = fusion_order::get_max_segments(fusion_order);
             assert!(*option::borrow(&segment) < max_segments, EINVALID_SEGMENT);
         };
+
+        let (asset, safety_deposit_asset) =
+            fusion_order::resolver_accept_order(resolver, fusion_order, segment);
 
         new(
             resolver,

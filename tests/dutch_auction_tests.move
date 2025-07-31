@@ -1,19 +1,16 @@
 #[test_only]
 module fusion_plus::dutch_auction_tests {
     use std::signer;
-    use std::option::{Self, Option};
+    use std::option::{Self};
     use std::vector;
-    use std::debug;
     use aptos_std::aptos_hash;
     use aptos_framework::account;
-    use aptos_framework::event::{Self};
-    use aptos_framework::fungible_asset::{Self, FungibleAsset, Metadata, MintRef};
+    use aptos_framework::fungible_asset::{Self, Metadata, MintRef};
     use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
     use aptos_framework::timestamp;
-    use fusion_plus::dutch_auction::{Self, DutchAuction, AuctionParams};
-    use fusion_plus::common::{Self, safety_deposit_metadata};
-    use fusion_plus::hashlock;
+    use fusion_plus::dutch_auction::{Self, DutchAuction};
+    use fusion_plus::common::{Self};
 
     // Test amounts
     const MINT_AMOUNT: u64 = 10000000000; // 100 token
@@ -540,7 +537,7 @@ module fusion_plus::dutch_auction_tests {
 
         // Verify auction no longer exists
         assert!(dutch_auction::auction_exists(auction) == false, 0);
-        // assert!(object::object_exists<DutchAuction>(auction_address) == false, 0);
+        assert!(object::object_exists<DutchAuction>(auction_address) == false, 0);
 
     }
 

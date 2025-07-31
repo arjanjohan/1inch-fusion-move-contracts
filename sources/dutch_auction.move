@@ -2,7 +2,6 @@ module fusion_plus::dutch_auction {
     use std::signer;
     use std::option::{Self, Option};
     use std::vector;
-    use std::debug;
     use aptos_framework::event::{Self};
     use aptos_framework::fungible_asset::{FungibleAsset, Metadata};
     use aptos_framework::object::{Self, Object, ExtendRef, DeleteRef, ObjectGroup};
@@ -261,8 +260,7 @@ module fusion_plus::dutch_auction {
         );
 
         // Delete the auction object after cancellation
-        let controller = borrow_dutch_auction_controller_mut(&auction);
-        let DutchAuctionController { extend_ref, delete_ref } =
+        let DutchAuctionController { extend_ref: _, delete_ref } =
             move_from(object::object_address(&auction));
         object::delete(delete_ref);
     }
@@ -387,7 +385,7 @@ module fusion_plus::dutch_auction {
         // Check if auction is completely filled
         if (segment_to_fill == num_hashes - 1 || segment_to_fill == num_hashes - 2) {
             let controller = borrow_dutch_auction_controller_mut(&auction);
-            let DutchAuctionController { extend_ref, delete_ref } =
+            let DutchAuctionController { extend_ref: _, delete_ref } =
                 move_from(object::object_address(&auction));
             object::delete(delete_ref);
         };

@@ -1,7 +1,6 @@
 module fusion_plus::fusion_order {
     use std::signer;
     use std::vector;
-    use std::debug;
     use aptos_framework::event::{Self};
     use aptos_framework::fungible_asset::{FungibleAsset, Metadata};
     use aptos_framework::object::{Self, Object, ExtendRef, DeleteRef, ObjectGroup};
@@ -345,7 +344,6 @@ module fusion_plus::fusion_order {
         if (option::is_none(&segment)) {
             // Full fill - use the last segment
             let fusion_order_ref = borrow_fusion_order(&fusion_order);
-            let num_hashes = vector::length(&fusion_order_ref.hashes);
             accept_order_full(signer, fusion_order)
         } else {
             // Partial fill - use the specified segment
@@ -406,7 +404,6 @@ module fusion_plus::fusion_order {
 
         // Get hash for the full fill (last segment)
         let num_hashes = vector::length(&fusion_order_ref.hashes);
-        let full_fill_hash = get_hash_for_segment(fusion_order, num_hashes - 1);
 
         // Create vector of filled segments (all segments)
         let filled_segments = vector::empty<u64>();
@@ -469,7 +466,6 @@ module fusion_plus::fusion_order {
         let maker = fusion_order_ref.maker;
         let metadata = fusion_order_ref.metadata;
         let order_hash = fusion_order_ref.order_hash;
-        let safety_deposit_amount = fusion_order_ref.safety_deposit_amount;
 
         let FusionOrderController { extend_ref, delete_ref } = move_from(object_address);
 
@@ -488,9 +484,6 @@ module fusion_plus::fusion_order {
 
         // Update fusion order state
         option::swap_or_fill(&mut fusion_order_ref.last_filled_segment, segment);
-
-        // Get hash for the segment being filled
-        let segment_hash = get_hash_for_segment(fusion_order, segment);
 
         // Create vector of filled segments
         let filled_segments = vector::empty<u64>();
