@@ -51,7 +51,9 @@ module fusion_plus::hashlock {
     }
 
     #[view]
-    public fun verify_hash_with_secret(hash: vector<u8>, secret: vector<u8>): bool {
+    public fun verify_hash_with_secret(
+        hash: vector<u8>, secret: vector<u8>
+    ): bool {
         aptos_hash::keccak256(secret) == hash
     }
 

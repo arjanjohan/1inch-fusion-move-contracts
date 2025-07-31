@@ -2,7 +2,7 @@ module fusion_plus::router {
     use fusion_plus::dutch_auction::{Self, DutchAuction};
     use fusion_plus::fusion_order::{Self, FusionOrder};
     use aptos_framework::fungible_asset::{Metadata};
-    // use fusion_plus::escrow;
+    use fusion_plus::escrow;
     use aptos_framework::object::{Object};
     use aptos_framework::signer;
     use std::option::{Self, Option};
@@ -81,4 +81,55 @@ module fusion_plus::router {
     ) {
         fusion_order::cancel(signer, fusion_order);
     }
+
+    // - - - - ESCROW FUNCTIONS - - - -
+
+    public entry fun deploy_source_single_fill(
+        resolver: &signer, fusion_order: Object<FusionOrder>
+    ) {
+        escrow::deploy_source(resolver, fusion_order, option::none());
+    }
+
+    public entry fun deploy_source_partial_fill(
+        resolver: &signer, fusion_order: Object<FusionOrder>, segment: u64
+    ) {
+        escrow::deploy_source(resolver, fusion_order, option::some(segment));
+    }
+
+
+    public entry fun deploy_destination_single_fill(
+        resolver: &signer,
+        auction: Object<DutchAuction>,
+        finality_duration: u64,
+        exclusive_duration: u64,
+        private_cancellation_duration: u64
+    ) {
+        escrow::deploy_destination(
+            resolver,
+            auction,
+            option::none(),
+            finality_duration,
+            exclusive_duration,
+            private_cancellation_duration
+        );
+    }
+
+    public entry fun deploy_destination_partial_fill(
+        resolver: &signer,
+        auction: Object<DutchAuction>,
+        segment: u64,
+        finality_duration: u64,
+        exclusive_duration: u64,
+        private_cancellation_duration: u64
+    ) {
+        escrow::deploy_destination(
+            resolver,
+            auction,
+            option::some(segment),
+            finality_duration,
+            exclusive_duration,
+            private_cancellation_duration
+        );
+    }
+
 }

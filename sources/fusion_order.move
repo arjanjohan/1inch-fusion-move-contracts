@@ -11,7 +11,7 @@ module fusion_plus::fusion_order {
     use fusion_plus::hashlock;
     use std::option::{Self, Option};
 
-    // friend fusion_plus::escrow;
+    friend fusion_plus::escrow;
 
     // - - - - ERROR CODES - - - -
 
@@ -192,12 +192,6 @@ module fusion_plus::fusion_order {
         let extend_ref = object::generate_extend_ref(&constructor_ref);
         let delete_ref = object::generate_delete_ref(&constructor_ref);
 
-        // Create the controller
-        move_to(
-            &object_signer,
-            FusionOrderController { extend_ref, delete_ref }
-        );
-
         // Create the FusionOrder
         let fusion_order = FusionOrder {
             order_hash,
@@ -215,6 +209,12 @@ module fusion_plus::fusion_order {
         };
 
         move_to(&object_signer, fusion_order);
+
+        // Create the controller
+        move_to(
+            &object_signer,
+            FusionOrderController { extend_ref, delete_ref }
+        );
 
         let object_address = signer::address_of(&object_signer);
 
@@ -748,6 +748,17 @@ module fusion_plus::fusion_order {
         *vector::borrow(&fusion_order_ref.hashes, segment)
     }
 
+    /// Gets the maximum number of segments for the fusion order.
+    ///
+    /// @param fusion_order The fusion order.
+    /// @return u64 The maximum number of segments.
+    public fun get_max_segments(
+        fusion_order: Object<FusionOrder>
+    ): u64 acquires FusionOrder {
+        let fusion_order_ref = borrow_fusion_order(&fusion_order);
+        vector::length(&fusion_order_ref.hashes)
+    }
+
     /// Gets the auto-cancel timestamp for the fusion order.
     ///
     /// @param fusion_order The fusion order.
@@ -801,16 +812,6 @@ module fusion_plus::fusion_order {
 
     // - - - - BORROW FUNCTIONS - - - -
 
-    /// Borrows a mutable reference to the FusionOrderController.
-    ///
-    /// @param fusion_order_obj The fusion order object.
-    /// @return &FusionOrderController Mutable reference to the controller.
-    inline fun borrow_fusion_order_controller_mut(
-        fusion_order_obj: &Object<FusionOrder>
-    ): &FusionOrderController acquires FusionOrderController {
-        borrow_global_mut<FusionOrderController>(object::object_address(fusion_order_obj))
-    }
-
     /// Borrows an immutable reference to the FusionOrder.
     ///
     /// @param fusion_order_obj The fusion order object.
@@ -829,6 +830,16 @@ module fusion_plus::fusion_order {
         fusion_order_obj: &Object<FusionOrder>
     ): &mut FusionOrder acquires FusionOrder {
         borrow_global_mut<FusionOrder>(object::object_address(fusion_order_obj))
+    }
+
+    /// Borrows a mutable reference to the FusionOrderController.
+    ///
+    /// @param fusion_order_obj The fusion order object.
+    /// @return &FusionOrderController Mutable reference to the controller.
+    inline fun borrow_fusion_order_controller_mut(
+        fusion_order_obj: &Object<FusionOrder>
+    ): &FusionOrderController acquires FusionOrderController {
+        borrow_global_mut<FusionOrderController>(object::object_address(fusion_order_obj))
     }
 
     // - - - - TEST FUNCTIONS - - - -

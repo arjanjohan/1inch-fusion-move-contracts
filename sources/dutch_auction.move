@@ -10,10 +10,7 @@ module fusion_plus::dutch_auction {
     use aptos_framework::timestamp;
 
     use fusion_plus::hashlock;
-
-    // friend fusion_plus::escrow;
-    #[test_only]
-    friend fusion_plus::dutch_auction_tests;
+    friend fusion_plus::escrow;
 
     // - - - - ERROR CODES - - - -
 
@@ -78,6 +75,16 @@ module fusion_plus::dutch_auction {
 
     // - - - - STRUCTS - - - -
 
+    #[resource_group_member(group = ObjectGroup)]
+    /// Controller for managing the lifecycle of a FusionOrder.
+    ///
+    /// @param extend_ref The extend_ref of the fusion order, used to generate signer for the fusion order.
+    /// @param delete_ref The delete ref of the fusion order, used to delete the fusion order.
+    struct DutchAuctionController has key {
+        extend_ref: ExtendRef,
+        delete_ref: DeleteRef
+    }
+
     /// A Dutch auction that determines the amount for ETH > APT orders.
     /// The amount starts high and decays over time until the auction ends.
     ///
@@ -85,7 +92,6 @@ module fusion_plus::dutch_auction {
     /// @param maker The address of the maker who created the auction.
     /// @param metadata The metadata of the destination asset (APT).
     /// @param auction_params The auction parameters.
-    /// @param is_filled Whether the auction has been filled.
     /// @param safety_deposit_amount The total safety deposit amount.
     /// @param last_filled_segment Track the last segment that was filled.
     /// @param hashes All secret hashes for partial fills.
@@ -94,7 +100,6 @@ module fusion_plus::dutch_auction {
         maker: address,
         metadata: Object<Metadata>,
         auction_params: AuctionParams,
-        is_filled: bool,
         safety_deposit_amount: u64,
         last_filled_segment: Option<u64>,
         hashes: vector<vector<u8>>
@@ -186,13 +191,18 @@ module fusion_plus::dutch_auction {
             maker: signer_address,
             metadata,
             auction_params,
-            is_filled: false,
             safety_deposit_amount,
             last_filled_segment: option::none(),
             hashes
         };
 
         move_to(&object_signer, auction);
+
+        // Create the controller
+        move_to(
+            &object_signer,
+            DutchAuctionController { extend_ref, delete_ref }
+        );
 
         let auction_obj = object::object_from_constructor_ref(&constructor_ref);
 
@@ -223,7 +233,7 @@ module fusion_plus::dutch_auction {
     /// @reverts EINVALID_CALLER if the signer is not the maker.
     public fun cancel_auction(
         signer: &signer, auction: Object<DutchAuction>
-    ) acquires DutchAuction {
+    ) acquires DutchAuction, DutchAuctionController {
         let signer_address = signer::address_of(signer);
         assert!(auction_exists(auction), EOBJECT_DOES_NOT_EXIST);
         assert!(is_maker(auction, signer_address), EINVALID_CALLER);
@@ -234,7 +244,6 @@ module fusion_plus::dutch_auction {
             maker: _,
             metadata: _,
             auction_params: _,
-            is_filled: _,
             safety_deposit_amount: _,
             last_filled_segment: _,
             hashes: _
@@ -248,6 +257,11 @@ module fusion_plus::dutch_auction {
                 order_hash
             }
         );
+
+        // Delete the auction object after cancellation
+        let controller = borrow_dutch_auction_controller_mut(&auction);
+        let DutchAuctionController { extend_ref, delete_ref } = move_from(object::object_address(&auction));
+        object::delete(delete_ref);
     }
 
     #[view]
@@ -294,7 +308,7 @@ module fusion_plus::dutch_auction {
     /// @return (FungibleAsset, FungibleAsset) The main asset and safety deposit asset.
     public(friend) fun fill_auction(
         signer: &signer, auction: Object<DutchAuction>, segment: Option<u64>
-    ): (FungibleAsset, FungibleAsset) acquires DutchAuction {
+    ): (FungibleAsset, FungibleAsset) acquires DutchAuction, DutchAuctionController {
         let signer_address = signer::address_of(signer);
         let current_time = timestamp::now_seconds();
 
@@ -313,9 +327,6 @@ module fusion_plus::dutch_auction {
 
         // Check if auction has started
         assert!(current_time >= auction_params.auction_start_time, EAUCTION_NOT_STARTED);
-
-        // Check if auction is already completely filled
-        assert!(!auction_ref.is_filled, EAUCTION_ALREADY_FILLED);
 
         let num_hashes = vector::length(&auction_ref.hashes);
         let segment_to_fill: u64;
@@ -365,8 +376,9 @@ module fusion_plus::dutch_auction {
 
         // Check if auction is completely filled
         if (segment_to_fill == num_hashes - 1 || segment_to_fill == num_hashes - 2) {
-            auction_ref.is_filled = true;
-            // TODO: destroy the auction object?
+            let controller = borrow_dutch_auction_controller_mut(&auction);
+            let DutchAuctionController { extend_ref, delete_ref } = move_from(object::object_address(&auction));
+            object::delete(delete_ref);
         };
 
         // Withdraw assets from resolver to prevent gaming
@@ -474,16 +486,6 @@ module fusion_plus::dutch_auction {
     public fun get_decay_duration(auction: Object<DutchAuction>): u64 acquires DutchAuction {
         let auction_ref = borrow_dutch_auction(&auction);
         auction_ref.auction_params.decay_duration
-    }
-
-    #[view]
-    /// Checks if an auction is filled.
-    ///
-    /// @param auction The auction to check.
-    /// @return bool True if the auction is filled, false otherwise.
-    public fun is_filled(auction: Object<DutchAuction>): bool acquires DutchAuction {
-        let auction_ref = borrow_dutch_auction(&auction);
-        auction_ref.is_filled
     }
 
     #[view]
@@ -658,26 +660,6 @@ module fusion_plus::dutch_auction {
         object::address_to_object<Metadata>(@0xa)
     }
 
-    // - - - - TEST-ONLY FUNCTIONS - - - -
-
-    #[test_only]
-    /// Deletes a Dutch auction for testing purposes.
-    ///
-    /// @param auction The auction to delete.
-    public fun delete_for_test(auction: Object<DutchAuction>) acquires DutchAuction {
-        let auction_address = object::object_address(&auction);
-        let DutchAuction {
-            order_hash: _,
-            maker: _,
-            metadata: _,
-            auction_params: _,
-            is_filled: _,
-            safety_deposit_amount: _,
-            last_filled_segment: _,
-            hashes: _
-        } = move_from<DutchAuction>(auction_address);
-    }
-
     /// Checks if an address is the maker of an auction.
     ///
     /// @param auction The auction to check.
@@ -708,5 +690,37 @@ module fusion_plus::dutch_auction {
         auction_obj: &Object<DutchAuction>
     ): &mut DutchAuction acquires DutchAuction {
         borrow_global_mut<DutchAuction>(object::object_address(auction_obj))
+    }
+
+    /// Borrows a mutable reference to the DutchAuctionController.
+    ///
+    /// @param auction_obj The auction object.
+    /// @return &mut DutchAuctionController Mutable reference to the controller.
+    inline fun borrow_dutch_auction_controller_mut(
+        auction_obj: &Object<DutchAuction>
+    ): &mut DutchAuctionController acquires DutchAuctionController {
+        borrow_global_mut<DutchAuctionController>(object::object_address(auction_obj))
+    }
+
+    // - - - - TEST-ONLY FUNCTIONS - - - -
+
+    #[test_only]
+    friend fusion_plus::dutch_auction_tests;
+
+    #[test_only]
+    /// Deletes a Dutch auction for testing purposes.
+    ///
+    /// @param auction The auction to delete.
+    public fun delete_for_test(auction: Object<DutchAuction>) acquires DutchAuction {
+        let auction_address = object::object_address(&auction);
+        let DutchAuction {
+            order_hash: _,
+            maker: _,
+            metadata: _,
+            auction_params: _,
+            safety_deposit_amount: _,
+            last_filled_segment: _,
+            hashes: _
+        } = move_from<DutchAuction>(auction_address);
     }
 }

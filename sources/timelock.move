@@ -50,7 +50,9 @@ module fusion_plus::timelock {
     public fun new_from_durations(
         finality_duration: u64, exclusive_duration: u64, private_cancellation_duration: u64
     ): Timelock {
-        new_internal(finality_duration, exclusive_duration, private_cancellation_duration)
+        new_internal(
+            finality_duration, exclusive_duration, private_cancellation_duration
+        )
     }
 
     /// Creates a new Timelock with the specified durations.

@@ -115,7 +115,7 @@ module fusion_plus::dutch_auction_tests {
         assert!(object::object_exists<DutchAuction>(auction_address) == true, 0);
 
         // Verify initial state
-        assert!(dutch_auction::is_filled(auction) == false, 0);
+        assert!(dutch_auction::auction_exists(auction) == true, 0);
         assert!(option::is_none(&dutch_auction::get_last_filled_segment(auction)), 0);
         assert!(dutch_auction::is_partial_fill_allowed(auction) == true, 0);
         assert!(dutch_auction::get_max_segments(auction) == 11, 0);
@@ -328,7 +328,7 @@ module fusion_plus::dutch_auction_tests {
         assert!(fungible_asset::amount(&safety_deposit_asset) == SAFETY_DEPOSIT_AMOUNT, 0);
 
         // Verify auction is filled
-        assert!(dutch_auction::is_filled(auction) == true, 0);
+        assert!(dutch_auction::auction_exists(auction) == false, 0);
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, asset);
@@ -364,7 +364,7 @@ module fusion_plus::dutch_auction_tests {
         assert!(fungible_asset::amount(&safety_deposit_asset) == SAFETY_DEPOSIT_AMOUNT, 0);
 
         // Verify auction is filled
-        assert!(dutch_auction::is_filled(auction) == true, 0);
+        assert!(dutch_auction::auction_exists(auction) == false, 0);
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, asset);
@@ -402,7 +402,7 @@ module fusion_plus::dutch_auction_tests {
         assert!(fungible_asset::amount(&safety_deposit_asset) == expected_safety_deposit, 0);
 
         // Verify auction is not completely filled
-        assert!(dutch_auction::is_filled(auction) == false, 0);
+        assert!(dutch_auction::auction_exists(auction) == true, 0);
         assert!(dutch_auction::get_last_filled_segment(auction) == option::some<u64>(2), 0);
 
         // Clean up assets
@@ -453,7 +453,7 @@ module fusion_plus::dutch_auction_tests {
         assert!(fungible_asset::amount(&safety_deposit_asset3) == expected_safety_deposit3, 0);
 
         // Verify auction is completely filled
-        assert!(dutch_auction::is_filled(auction) == true, 0);
+        assert!(dutch_auction::auction_exists(auction) == false, 0);
         assert!(dutch_auction::get_last_filled_segment(auction) == option::some<u64>(9), 0);
 
         // Clean up assets
@@ -483,6 +483,8 @@ module fusion_plus::dutch_auction_tests {
             SAFETY_DEPOSIT_AMOUNT
         );
 
+        let auction_address = object::object_address(&auction);
+
         // Verify auction exists before cancellation
         assert!(dutch_auction::auction_exists(auction), 0);
 
@@ -491,6 +493,8 @@ module fusion_plus::dutch_auction_tests {
 
         // Verify auction no longer exists
         assert!(dutch_auction::auction_exists(auction) == false, 0);
+        // assert!(object::object_exists<DutchAuction>(auction_address) == false, 0);
+
     }
 
     #[test]
@@ -769,7 +773,7 @@ module fusion_plus::dutch_auction_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = dutch_auction::EAUCTION_ALREADY_FILLED)]
+    #[expected_failure(abort_code = dutch_auction::EOBJECT_DOES_NOT_EXIST)]
     fun test_fill_auction_already_filled() {
         let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
@@ -973,7 +977,8 @@ module fusion_plus::dutch_auction_tests {
         let expected_final_safety_deposit = SAFETY_DEPOSIT_AMOUNT - ((SAFETY_DEPOSIT_AMOUNT * 9) / 10);
         assert!(fungible_asset::amount(&final_asset) == expected_final_amount, 0);
         assert!(fungible_asset::amount(&final_safety_deposit_asset) == expected_final_safety_deposit, 0);
-        assert!(dutch_auction::is_filled(auction) == true, 0);
+        assert!(dutch_auction::auction_exists(auction) == false, 0);
+
 
         // Clean up final assets
         primary_fungible_store::deposit(@0x0, final_asset);
@@ -1018,7 +1023,7 @@ module fusion_plus::dutch_auction_tests {
         primary_fungible_store::deposit(@0x0, safety_deposit_asset);
 
         // Verify auction is filled
-        assert!(dutch_auction::is_filled(auction) == true, 0);
+        assert!(dutch_auction::auction_exists(auction) == false, 0);
     }
 
     #[test]
@@ -1132,8 +1137,8 @@ module fusion_plus::dutch_auction_tests {
         primary_fungible_store::deposit(@0x0, asset2);
         primary_fungible_store::deposit(@0x0, safety_deposit_asset2);
 
-        // Verify auction is not completely filled
-        assert!(dutch_auction::is_filled(auction) == false, 0);
+        // Verify auction is not completely filled and not deleted
+        assert!(dutch_auction::auction_exists(auction) == true, 0);
 
         // Fill remaining segment 9 (1 segment)
         let (asset3, safety_deposit_asset3) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(9));
@@ -1147,7 +1152,7 @@ module fusion_plus::dutch_auction_tests {
         primary_fungible_store::deposit(@0x0, safety_deposit_asset3);
 
         // Verify auction is completely filled
-        assert!(dutch_auction::is_filled(auction) == true, 0);
+        assert!(dutch_auction::auction_exists(auction) == false, 0);
     }
 
 
