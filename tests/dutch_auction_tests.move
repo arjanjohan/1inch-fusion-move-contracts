@@ -3,6 +3,7 @@ module fusion_plus::dutch_auction_tests {
     use std::signer;
     use std::option::{Self, Option};
     use std::vector;
+    use std::debug;
     use aptos_std::aptos_hash;
     use aptos_framework::account;
     use aptos_framework::event::{Self};
@@ -85,7 +86,7 @@ module fusion_plus::dutch_auction_tests {
 
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -135,7 +136,7 @@ module fusion_plus::dutch_auction_tests {
         let hashes = vector::empty<vector<u8>>();
         vector::push_back(&mut hashes, aptos_hash::keccak256(TEST_SECRET_0));
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -159,7 +160,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, _, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -184,7 +185,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, _, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -210,7 +211,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, _, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -236,7 +237,7 @@ module fusion_plus::dutch_auction_tests {
         let hashes = vector::empty<vector<u8>>();
         vector::push_back(&mut hashes, aptos_hash::keccak256(TEST_SECRET_0));
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -270,7 +271,7 @@ module fusion_plus::dutch_auction_tests {
         let hashes = vector::empty<vector<u8>>();
         vector::push_back(&mut hashes, aptos_hash::keccak256(TEST_SECRET_0));
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -303,7 +304,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -339,7 +340,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -375,7 +376,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -414,7 +415,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -469,7 +470,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, _, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -497,7 +498,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, _, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -528,7 +529,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, _, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -560,7 +561,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, _, metadata, _) = setup_test();
         let hashes = create_test_hashes();
 
-        let auction = dutch_auction::create_auction(
+        let auction = dutch_auction::new(
             &maker,
             ORDER_HASH,
             hashes,
@@ -596,6 +597,591 @@ module fusion_plus::dutch_auction_tests {
         // Test with deleted auction
         dutch_auction::delete_for_test(auction);
         assert!(dutch_auction::auction_exists(auction) == false, 0);
+    }
+
+    // - - - - ERROR AND EDGE CASE TESTS - - - -
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_AUCTION_PARAMS)]
+    fun test_create_auction_invalid_params_starting_less_than_ending() {
+        let (maker, _, _, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            ENDING_AMOUNT, // Starting amount less than ending amount
+            STARTING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_AUCTION_PARAMS)]
+    fun test_create_auction_invalid_params_zero_decay_duration() {
+        let (maker, _, _, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            0, // Zero decay duration
+            SAFETY_DEPOSIT_AMOUNT
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_AUCTION_PARAMS)]
+    fun test_create_auction_invalid_params_end_time_before_decay_complete() {
+        let (maker, _, _, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_START_TIME + DECAY_DURATION - 100, // End time before decay completes
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_AUCTION_PARAMS)]
+    fun test_create_auction_invalid_params_zero_starting_amount() {
+        let (maker, _, _, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            0, // Zero starting amount
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_SAFETY_DEPOSIT_AMOUNT)]
+    fun test_create_auction_invalid_params_zero_safety_deposit() {
+        let (maker, _, _, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            0 // Zero safety deposit
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_SAFETY_DEPOSIT_AMOUNT)]
+    fun test_create_auction_invalid_params_safety_deposit_not_divisible() {
+        let (maker, _, _, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            101 // Not divisible by 10 (num_hashes - 1)
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_HASHES)]
+    fun test_create_auction_invalid_params_empty_hashes() {
+        let (maker, _, _, metadata, _) = setup_test();
+        let hashes = vector::empty<vector<u8>>();
+
+        dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EAUCTION_NOT_STARTED)]
+    fun test_fill_auction_before_start() {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time before auction starts
+        timestamp::fast_forward_seconds(AUCTION_START_TIME - 100);
+
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(0));
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EAUCTION_ALREADY_FILLED)]
+    fun test_fill_auction_already_filled() {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time after auction starts
+        timestamp::fast_forward_seconds(AUCTION_START_TIME);
+
+        // Fill the auction completely
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(&resolver, auction, option::none<u64>());
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+
+        // Try to fill again
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(0));
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_SEGMENT)]
+    fun test_fill_auction_invalid_segment() {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time after auction starts
+        timestamp::fast_forward_seconds(AUCTION_START_TIME);
+
+        // Try to fill invalid segment
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(11));
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::ESEGMENT_ALREADY_FILLED)]
+    fun test_fill_auction_segment_already_filled() {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time after auction starts
+        timestamp::fast_forward_seconds(AUCTION_START_TIME);
+
+        // Fill segment 0
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(0));
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+
+        // Try to fill segment 0 again
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(0));
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::ESEGMENT_ALREADY_FILLED)]
+    fun test_fill_auction_out_of_order() {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time after auction starts
+        timestamp::fast_forward_seconds(AUCTION_START_TIME);
+
+        // Fill segment 2 first
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(2));
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+
+        // Try to fill segment 1 first (should fail)
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(1));
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_CALLER)]
+    fun test_cancel_auction_wrong_caller() {
+        let (maker, wrong_caller, _, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Try to cancel with wrong caller
+        dutch_auction::cancel_auction(&wrong_caller, auction);
+    }
+
+    // - - - - ADDITIONAL HAPPY FLOW TESTS - - - -
+
+    #[test]
+    fun test_fill_auction_complete_with_partial_fills() {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time after auction starts
+        timestamp::fast_forward_seconds(AUCTION_START_TIME);
+
+        // Fill segments 0-8 (9 partial fills)
+        let i = 0;
+        while (i < 9) {
+            let (asset, safety_deposit_asset) = dutch_auction::fill_auction(
+                &resolver, auction, option::some<u64>(i)
+            );
+
+            // Verify segment fill
+            let expected_amount = STARTING_AMOUNT / 10;
+            let expected_safety_deposit = SAFETY_DEPOSIT_AMOUNT / 10;
+
+            assert!(fungible_asset::amount(&asset) == expected_amount, 0);
+            assert!(fungible_asset::amount(&safety_deposit_asset) == expected_safety_deposit, 0);
+
+
+            // Clean up assets
+            primary_fungible_store::deposit(@0x0, asset);
+            primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+
+            i = i + 1;
+        };
+
+        // Fill the last segment (segment 9) to complete the auction
+        let (final_asset, final_safety_deposit_asset) = dutch_auction::fill_auction(
+            &resolver, auction, option::some<u64>(9)
+        );
+
+        // Verify final fill (remaining amount)
+        let expected_final_amount = STARTING_AMOUNT - ((STARTING_AMOUNT * 9) / 10);
+        let expected_final_safety_deposit = SAFETY_DEPOSIT_AMOUNT - ((SAFETY_DEPOSIT_AMOUNT * 9) / 10);
+        assert!(fungible_asset::amount(&final_asset) == expected_final_amount, 0);
+        assert!(fungible_asset::amount(&final_safety_deposit_asset) == expected_final_safety_deposit, 0);
+        assert!(dutch_auction::is_filled(auction) == true, 0);
+
+        // Clean up final assets
+        primary_fungible_store::deposit(@0x0, final_asset);
+        primary_fungible_store::deposit(@0x0, final_safety_deposit_asset);
+    }
+
+    #[test]
+    fun test_fill_auction_large_amount() {
+        let (maker, _, resolver, metadata, mint_ref) = setup_test();
+        let large_amount = 1000000000000; // 1M tokens
+        common::mint_fa(&mint_ref, large_amount, signer::address_of(&resolver));
+
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            large_amount,
+            large_amount / 2,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time after auction starts
+        timestamp::fast_forward_seconds(AUCTION_START_TIME);
+
+        // Fill the auction completely
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(
+            &resolver, auction, option::none<u64>()
+        );
+
+        // Verify assets received
+        assert!(fungible_asset::amount(&asset) == large_amount, 0);
+        assert!(fungible_asset::amount(&safety_deposit_asset) == SAFETY_DEPOSIT_AMOUNT, 0);
+
+        // Clean up assets
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+
+        // Verify auction is filled
+        assert!(dutch_auction::is_filled(auction) == true, 0);
+    }
+
+    #[test]
+    fun test_fill_auction_during_decay() {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time during decay (50% through)
+        timestamp::fast_forward_seconds(AUCTION_START_TIME + DECAY_DURATION / 2);
+
+        // Fill auction during decay
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(&resolver, auction, option::none<u64>());
+
+        // Verify amounts are based on current decayed amount
+        let expected_amount = STARTING_AMOUNT - (STARTING_AMOUNT - ENDING_AMOUNT) / 2;
+        assert!(fungible_asset::amount(&asset) == expected_amount, 0);
+        assert!(fungible_asset::amount(&safety_deposit_asset) == SAFETY_DEPOSIT_AMOUNT, 0);
+
+        // Clean up assets
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+    }
+
+    #[test]
+    fun test_fill_auction_after_decay() {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time after decay period
+        timestamp::fast_forward_seconds(AUCTION_END_TIME);
+
+
+        // Fill auction after decay
+        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(&resolver, auction, option::none<u64>());
+
+        // Verify amounts are based on ending amount
+        assert!(fungible_asset::amount(&asset) == ENDING_AMOUNT, 0);
+        assert!(fungible_asset::amount(&safety_deposit_asset) == SAFETY_DEPOSIT_AMOUNT, 0);
+
+        // Clean up assets
+        primary_fungible_store::deposit(@0x0, asset);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset);
+    }
+
+    #[test]
+    fun test_fill_auction_remaining_segments() {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time after auction starts
+        timestamp::fast_forward_seconds(AUCTION_START_TIME);
+
+        // Fill segments 0-4 (5 segments)
+        let (asset1, safety_deposit_asset1) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(4));
+        let expected_amount1 = (STARTING_AMOUNT * 5) / 10;
+        let expected_safety_deposit1 = (SAFETY_DEPOSIT_AMOUNT * 5) / 10;
+        assert!(fungible_asset::amount(&asset1) == expected_amount1, 0);
+        assert!(fungible_asset::amount(&safety_deposit_asset1) == expected_safety_deposit1, 0);
+
+        // Clean up first assets
+        primary_fungible_store::deposit(@0x0, asset1);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset1);
+
+        // Fill segments 5-8 (4 segments)
+        let (asset2, safety_deposit_asset2) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(8));
+        let expected_amount2 = (STARTING_AMOUNT * 4) / 10;
+        let expected_safety_deposit2 = (SAFETY_DEPOSIT_AMOUNT * 4) / 10;
+        assert!(fungible_asset::amount(&asset2) == expected_amount2, 0);
+        assert!(fungible_asset::amount(&safety_deposit_asset2) == expected_safety_deposit2, 0);
+
+        // Clean up second assets
+        primary_fungible_store::deposit(@0x0, asset2);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset2);
+
+        // Verify auction is not completely filled
+        assert!(dutch_auction::is_filled(auction) == false, 0);
+
+        // Fill remaining segment 9 (1 segment)
+        let (asset3, safety_deposit_asset3) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(9));
+        let expected_amount3 = (STARTING_AMOUNT * 1) / 10;
+        let expected_safety_deposit3 = (SAFETY_DEPOSIT_AMOUNT * 1) / 10;
+        assert!(fungible_asset::amount(&asset3) == expected_amount3, 0);
+        assert!(fungible_asset::amount(&safety_deposit_asset3) == expected_safety_deposit3, 0);
+
+        // Clean up third assets
+        primary_fungible_store::deposit(@0x0, asset3);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset3);
+
+        // Verify auction is completely filled
+        assert!(dutch_auction::is_filled(auction) == true, 0);
+    }
+
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_SEGMENT)]
+    fun test_fill_auction_hash_10_with_partial_fills() {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+
+        let auction = dutch_auction::new(
+            &maker,
+            ORDER_HASH,
+            hashes,
+            metadata,
+            STARTING_AMOUNT,
+            ENDING_AMOUNT,
+            AUCTION_START_TIME,
+            AUCTION_END_TIME,
+            DECAY_DURATION,
+            SAFETY_DEPOSIT_AMOUNT
+        );
+
+        // Set time after auction starts
+        timestamp::fast_forward_seconds(AUCTION_START_TIME);
+
+        // Fill segment 0 first
+        let (asset1, safety_deposit_asset1) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(0));
+        primary_fungible_store::deposit(@0x0, asset1);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset1);
+
+        // Try to use hash 10 (segment 10) for 100% fill when partial fills exist - should fail
+        let (asset2, safety_deposit_asset2) = dutch_auction::fill_auction(&resolver, auction, option::some<u64>(10));
+        primary_fungible_store::deposit(@0x0, asset2);
+        primary_fungible_store::deposit(@0x0, safety_deposit_asset2);
     }
 
 }

@@ -132,37 +132,6 @@ module fusion_plus::fusion_order {
         allow_resolver_to_cancel_after_timestamp: Option<u64>
     }
 
-    // - - - - ENTRY FUNCTIONS - - - -
-
-    /// Entry function for creating a new FusionOrder.
-    public entry fun new_entry(
-        signer: &signer,
-        order_hash: vector<u8>,
-        hashes: vector<vector<u8>>,
-        metadata: Object<Metadata>,
-        amount: u64,
-        safety_deposit_amount: u64,
-        resolver_whitelist: vector<address>,
-        finality_duration: u64,
-        exclusive_duration: u64,
-        private_cancellation_duration: u64,
-        auto_cancel_after: Option<u64>
-    ) {
-        new(
-            signer,
-            order_hash,
-            hashes,
-            metadata,
-            amount,
-            resolver_whitelist,
-            safety_deposit_amount,
-            finality_duration,
-            exclusive_duration,
-            private_cancellation_duration,
-            auto_cancel_after
-        );
-    }
-
     // - - - - PUBLIC FUNCTIONS - - - -
 
     /// Creates a new FusionOrder with the specified parameters.
@@ -283,7 +252,7 @@ module fusion_plus::fusion_order {
     ///
     /// @reverts EOBJECT_DOES_NOT_EXIST if the fusion order does not exist.
     /// @reverts EINVALID_CALLER if the signer is not the order maker.
-    public entry fun cancel(
+    public fun cancel(
         signer: &signer, fusion_order: Object<FusionOrder>
     ) acquires FusionOrder, FusionOrderController {
         let signer_address = signer::address_of(signer);

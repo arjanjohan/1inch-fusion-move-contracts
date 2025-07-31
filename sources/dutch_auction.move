@@ -2,6 +2,7 @@ module fusion_plus::dutch_auction {
     use std::signer;
     use std::option::{Self, Option};
     use std::vector;
+    use std::debug;
     use aptos_framework::event::{Self};
     use aptos_framework::fungible_asset::{FungibleAsset, Metadata};
     use aptos_framework::object::{Self, Object, ExtendRef, DeleteRef, ObjectGroup};
@@ -11,6 +12,7 @@ module fusion_plus::dutch_auction {
     use fusion_plus::hashlock;
 
     // friend fusion_plus::escrow;
+    #[test_only]
     friend fusion_plus::dutch_auction_tests;
 
     // - - - - ERROR CODES - - - -
@@ -36,7 +38,7 @@ module fusion_plus::dutch_auction {
     /// Segment already filled
     const ESEGMENT_ALREADY_FILLED: u64 = 10;
     /// Invalid segments
-    const EINVALID_SEGMENTS: u64 = 11;
+    const EINVALID_HASHES: u64 = 11;
     /// Invalid safety deposit amount
     const EINVALID_SAFETY_DEPOSIT_AMOUNT: u64 = 12;
 
@@ -106,43 +108,6 @@ module fusion_plus::dutch_auction {
         decay_duration: u64        // Duration over which amount decays
     }
 
-    // - - - - ENTRY FUNCTIONS - - - -
-
-    /// Entry function for creating a new Dutch auction.
-    public entry fun create_auction_entry(
-        signer: &signer,
-        order_hash: vector<u8>,
-        hashes: vector<vector<u8>>,
-        metadata: Object<Metadata>,
-        starting_amount: u64,
-        ending_amount: u64,
-        auction_start_time: u64,
-        auction_end_time: u64,
-        decay_duration: u64,
-        safety_deposit_amount: u64
-    ) {
-        create_auction(
-            signer,
-            order_hash,
-            hashes,
-            metadata,
-            starting_amount,
-            ending_amount,
-            auction_start_time,
-            auction_end_time,
-            decay_duration,
-            safety_deposit_amount
-        );
-    }
-
-    /// Entry function for cancelling a Dutch auction (maker only).
-    public entry fun cancel_auction_entry(
-        signer: &signer,
-        auction: Object<DutchAuction>
-    ) acquires DutchAuction {
-        cancel_auction(signer, auction);
-    }
-
     // - - - - PUBLIC FUNCTIONS - - - -
 
     /// Creates a new Dutch auction for an ETH > APT order.
@@ -160,10 +125,10 @@ module fusion_plus::dutch_auction {
     ///
     /// @reverts EINVALID_AUCTION_PARAMS if auction parameters are invalid.
     /// @reverts EINVALID_AMOUNT if amounts are invalid.
-    /// @reverts EINVALID_SEGMENTS if hashes are invalid.
+    /// @reverts EINVALID_HASHES if hashes are invalid.
     /// @reverts EINVALID_SAFETY_DEPOSIT_AMOUNT if safety deposit is invalid.
     /// @return Object<DutchAuction> The created auction object.
-    public fun create_auction(
+    public fun new(
         signer: &signer,
         order_hash: vector<u8>,
         hashes: vector<vector<u8>>,
@@ -189,7 +154,7 @@ module fusion_plus::dutch_auction {
         assert!(safety_deposit_amount > 0, EINVALID_SAFETY_DEPOSIT_AMOUNT);
 
         // Validate segments
-        assert!(vector::length(&hashes) > 0, EINVALID_SEGMENTS);
+        assert!(vector::length(&hashes) > 0, EINVALID_HASHES);
         let num_hashes = vector::length(&hashes);
         if (num_hashes > 1) {
             // Validate that safety deposit is divisible by number of partial segments
@@ -335,9 +300,14 @@ module fusion_plus::dutch_auction {
 
         assert!(auction_exists(auction), EOBJECT_DOES_NOT_EXIST);
 
+        // Calculate full fill amount based on auction price
         let current_amount = get_current_amount(auction);
         assert!(current_amount > 0, EINVALID_AMOUNT);
 
+        let segment_amount = get_segment_amount(auction);
+        let segment_safety_deposit_amount = get_segment_safety_deposit_amount(auction);
+
+        // Get auction reference
         let auction_ref = borrow_dutch_auction_mut(&auction);
         let auction_params = &auction_ref.auction_params;
 
@@ -352,63 +322,43 @@ module fusion_plus::dutch_auction {
 
         // Determine which segment to fill
         if (option::is_none(&segment)) {
-            // Full fill - use last segment
-            segment_to_fill = num_hashes - 1;
+            if (num_hashes == 1) {
+                // Single hash auction - always full fill
+                segment_to_fill = 0;
+            } else {
+                // Multiple hashes - use last partial segment
+                segment_to_fill = num_hashes - 2;
+            };
         } else {
-            let segment_val = option::extract(&mut segment);
+            segment_to_fill = option::destroy_some(segment);
             // Validate segment index
-            assert!(segment_val < num_hashes, EINVALID_SEGMENT);
-            segment_to_fill = segment_val;
+            assert!(segment_to_fill < num_hashes, EINVALID_SEGMENT);
         };
 
         // Validate segment is not already filled and is filled in order
         if (option::is_some(&auction_ref.last_filled_segment)) {
+
+            if (segment_to_fill == num_hashes - 1) {
+                // Do not allow using the last hash when order is already partially filled
+                assert!(option::is_none(&auction_ref.last_filled_segment), EINVALID_SEGMENT);
+            };
+
             let last_segment = *option::borrow(&auction_ref.last_filled_segment);
             assert!(segment_to_fill > last_segment, ESEGMENT_ALREADY_FILLED);
         };
 
-        // Calculate amount for this segment
-        let segment_amount: u64;
-        let safety_deposit_amount: u64;
-
-        if (num_hashes == 1) {
-            // Single hash auction - always full fill
-            segment_amount = current_amount;
-            safety_deposit_amount = auction_ref.safety_deposit_amount;
+        let numer_of_segments_to_fill: u64;
+        if (option::is_some(&auction_ref.last_filled_segment)) {
+            numer_of_segments_to_fill = segment_to_fill + 1 - *option::borrow(&auction_ref.last_filled_segment) - 1 ;
+        } else if (segment_to_fill == num_hashes - 1 &&  num_hashes > 1) {
+            numer_of_segments_to_fill = segment_to_fill;
         } else {
-            // Calculate segments to fill (from last_filled_segment + 1 up to segment_to_fill)
-            let segments_to_fill =
-                if (option::is_some(&auction_ref.last_filled_segment)) {
-                    let last_segment = *option::borrow(&auction_ref.last_filled_segment);
-                    segment_to_fill - last_segment
-                } else {
-                    segment_to_fill + 1 // +1 because segments are 0-indexed
-                };
-
-            if (segment_to_fill == num_hashes - 1) {
-                // Full fill (last segment) - calculate remaining amount
-                let filled_amount =
-                    if (option::is_some(&auction_ref.last_filled_segment)) {
-                        let last_segment = *option::borrow(&auction_ref.last_filled_segment);
-                        let filled_segments_count = last_segment + 1;
-                        filled_segments_count * (current_amount / (num_hashes - 1))
-                    } else { 0 };
-                segment_amount = current_amount - filled_amount;
-
-                // Calculate remaining safety deposit
-                let filled_safety_deposit =
-                    if (option::is_some(&auction_ref.last_filled_segment)) {
-                        let last_segment = *option::borrow(&auction_ref.last_filled_segment);
-                        let filled_segments_count = last_segment + 1;
-                        filled_segments_count * (auction_ref.safety_deposit_amount / (num_hashes - 1))
-                    } else { 0 };
-                safety_deposit_amount = auction_ref.safety_deposit_amount - filled_safety_deposit;
-            } else {
-                // Partial fill - calculate amount for segments from last_filled + 1 up to segment_to_fill
-                segment_amount = segments_to_fill * (current_amount / (num_hashes - 1));
-                safety_deposit_amount = segments_to_fill * (auction_ref.safety_deposit_amount / (num_hashes - 1));
-            };
+            numer_of_segments_to_fill = segment_to_fill + 1;
         };
+
+        // Calculate amount for this segment
+        let segment_amount = segment_amount * numer_of_segments_to_fill;
+        let safety_deposit_amount = segment_safety_deposit_amount * numer_of_segments_to_fill;
 
         // Mark segment as filled
         option::swap_or_fill(&mut auction_ref.last_filled_segment, segment_to_fill);
@@ -416,6 +366,7 @@ module fusion_plus::dutch_auction {
         // Check if auction is completely filled
         if (segment_to_fill == num_hashes - 1 || segment_to_fill == num_hashes - 2) {
             auction_ref.is_filled = true;
+            // TODO: destroy the auction object?
         };
 
         // Withdraw assets from resolver to prevent gaming
@@ -607,6 +558,23 @@ module fusion_plus::dutch_auction {
     }
 
     #[view]
+    /// Gets the segment amount for partial fills.
+    /// Note: This is calculated dynamically based on current auction amount and number of hashes.
+    ///
+    /// @param auction The auction to get the segment amount from.
+    /// @return u64 The segment amount.
+    public fun get_segment_safety_deposit_amount(auction: Object<DutchAuction>): u64 acquires DutchAuction {
+        let auction_ref = borrow_dutch_auction(&auction);
+        let num_hashes = vector::length(&auction_ref.hashes);
+        let safety_deposit_amount = auction_ref.safety_deposit_amount;
+        if (num_hashes > 1) {
+            safety_deposit_amount / (num_hashes - 1) // Each segment is equal
+        } else {
+            safety_deposit_amount // Single segment for full fill
+        }
+    }
+
+    #[view]
     /// Gets the maximum number of segments for partial fills.
     ///
     /// @param auction The auction to get the max segments from.
@@ -710,7 +678,6 @@ module fusion_plus::dutch_auction {
         } = move_from<DutchAuction>(auction_address);
     }
 
-    #[test_only]
     /// Checks if an address is the maker of an auction.
     ///
     /// @param auction The auction to check.
