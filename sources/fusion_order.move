@@ -179,8 +179,14 @@ module fusion_plus::fusion_order {
         let hashes_length = vector::length(&hashes);
         // Partial fill checks
         if (hashes_length > 1) {
-            assert!(amount % (hashes_length - 1) == 0, EINVALID_AMOUNT_FOR_PARTIAL_FILL);
-            assert!(safety_deposit_amount % ( hashes_length - 1) == 0, EINVALID_SAFETY_DEPOSIT_AMOUNT_FOR_PARTIAL_FILL);
+            assert!(
+                amount % (hashes_length - 1) == 0,
+                EINVALID_AMOUNT_FOR_PARTIAL_FILL
+            );
+            assert!(
+                safety_deposit_amount % (hashes_length - 1) == 0,
+                EINVALID_SAFETY_DEPOSIT_AMOUNT_FOR_PARTIAL_FILL
+            );
         };
         for (i in 0..hashes_length) {
             assert!(is_valid_hash(&hashes[i]), EINVALID_HASH);
@@ -261,13 +267,17 @@ module fusion_plus::fusion_order {
         // If maker doesn't cancel this order
         if (!(is_maker(fusion_order, signer_address))) {
             assert!(is_valid_resolver(fusion_order, signer_address), EINVALID_CALLER);
-            assert!(is_auto_cancel_active(fusion_order), ENOT_IN_RESOLVER_CANCELLATION_PERIOD);
+            assert!(
+                is_auto_cancel_active(fusion_order),
+                ENOT_IN_RESOLVER_CANCELLATION_PERIOD
+            );
         };
 
         let object_address = object::object_address(&fusion_order);
 
         // Calculate remaining amounts
-        let (remaining_amount, remaining_safety_deposit) = get_remaining_amounts(fusion_order);
+        let (remaining_amount, remaining_safety_deposit) =
+            get_remaining_amounts(fusion_order);
 
         // Store event data before deletion
         let fusion_order_ref = borrow_fusion_order_mut(&fusion_order);
@@ -432,20 +442,17 @@ module fusion_plus::fusion_order {
     ///
     /// @return (FungibleAsset, FungibleAsset) The main asset and safety deposit asset.
     fun accept_order_partial(
-        signer: &signer,
-        fusion_order: Object<FusionOrder>,
-        segment: u64
+        signer: &signer, fusion_order: Object<FusionOrder>, segment: u64
     ): (FungibleAsset, FungibleAsset) acquires FusionOrder, FusionOrderController {
         let signer_address = signer::address_of(signer);
         let fusion_order_ref = borrow_fusion_order_mut(&fusion_order);
         let num_hashes = vector::length(&fusion_order_ref.hashes);
 
         // Calculate which segments to fill
-        let start_segment = if (option::is_some(&fusion_order_ref.last_filled_segment)) {
-            *option::borrow(&fusion_order_ref.last_filled_segment) + 1
-        } else {
-            0
-        };
+        let start_segment =
+            if (option::is_some(&fusion_order_ref.last_filled_segment)) {
+                *option::borrow(&fusion_order_ref.last_filled_segment) + 1
+            } else { 0 };
 
         let segments_to_fill = segment - start_segment + 1;
         let segment_amount = fusion_order_ref.amount / (num_hashes - 1);
@@ -469,9 +476,8 @@ module fusion_plus::fusion_order {
         let object_signer = object::generate_signer_for_extending(&extend_ref);
 
         // Withdraw partial main asset
-        let asset = primary_fungible_store::withdraw(
-            &object_signer, metadata, total_amount
-        );
+        let asset =
+            primary_fungible_store::withdraw(&object_signer, metadata, total_amount);
 
         let safety_deposit_asset =
             primary_fungible_store::withdraw(
@@ -665,26 +671,31 @@ module fusion_plus::fusion_order {
             let last_segment = *option::borrow(&fusion_order_ref.last_filled_segment);
             let filled_segments_count = last_segment + 1;
             if (num_hashes > 1) {
-                let filled_amount = filled_segments_count * (fusion_order_ref.amount / (num_hashes - 1));
-                let filled_safety_deposit_amount = filled_segments_count * (fusion_order_ref.safety_deposit_amount / (num_hashes - 1));
+                let filled_amount =
+                    filled_segments_count * (fusion_order_ref.amount / (num_hashes - 1));
+                let filled_safety_deposit_amount =
+                    filled_segments_count
+                        * (fusion_order_ref.safety_deposit_amount / (num_hashes - 1));
                 (filled_amount, filled_safety_deposit_amount)
             } else {
                 (fusion_order_ref.amount, fusion_order_ref.safety_deposit_amount)
             }
-        } else {
-            (0, 0)
-        }
+        } else { (0, 0) }
     }
 
     /// Gets the remaining amount of the fusion order.
     ///
     /// @param fusion_order The fusion order to get the remaining amount from.
     /// @return u64 The remaining amount.
-    public fun get_remaining_amounts(fusion_order: Object<FusionOrder>): (u64, u64) acquires FusionOrder {
+    public fun get_remaining_amounts(
+        fusion_order: Object<FusionOrder>
+    ): (u64, u64) acquires FusionOrder {
         let fusion_order_ref = borrow_fusion_order(&fusion_order);
-        let (filled_amount, filled_safety_deposit_amount) = get_filled_amounts_internal(fusion_order_ref);
+        let (filled_amount, filled_safety_deposit_amount) =
+            get_filled_amounts_internal(fusion_order_ref);
         let remaining_amount = fusion_order_ref.amount - filled_amount;
-        let remaining_safety_deposit = fusion_order_ref.safety_deposit_amount - filled_safety_deposit_amount;
+        let remaining_safety_deposit =
+            fusion_order_ref.safety_deposit_amount - filled_safety_deposit_amount;
         (remaining_amount, remaining_safety_deposit)
     }
 
@@ -703,16 +714,16 @@ module fusion_plus::fusion_order {
                 // Partial order can be filled in a single fill (last segment) or in multiple fills (last segment - 1)
                 last_segment == num_hashes - 1 || last_segment == num_hashes - 2
             }
-        } else {
-            false
-        }
+        } else { false }
     }
 
     /// Gets the last filled segment of the fusion order.
     ///
     /// @param fusion_order The fusion order to get the last filled segment from.
     /// @return Option<u64> The last filled segment, or None if no segments filled.
-    public fun get_last_filled_segment(fusion_order: Object<FusionOrder>): Option<u64> acquires FusionOrder {
+    public fun get_last_filled_segment(
+        fusion_order: Object<FusionOrder>
+    ): Option<u64> acquires FusionOrder {
         let fusion_order_ref = borrow_fusion_order(&fusion_order);
         fusion_order_ref.last_filled_segment
     }
@@ -752,9 +763,7 @@ module fusion_plus::fusion_order {
     ///
     /// @param fusion_order The fusion order.
     /// @return u64 The maximum number of segments.
-    public fun get_max_segments(
-        fusion_order: Object<FusionOrder>
-    ): u64 acquires FusionOrder {
+    public fun get_max_segments(fusion_order: Object<FusionOrder>): u64 acquires FusionOrder {
         let fusion_order_ref = borrow_fusion_order(&fusion_order);
         vector::length(&fusion_order_ref.hashes)
     }
@@ -774,9 +783,7 @@ module fusion_plus::fusion_order {
     ///
     /// @param fusion_order The fusion order.
     /// @return bool True if auto-cancel is enabled, false otherwise.
-    public fun is_auto_cancel_enabled(
-        fusion_order: Object<FusionOrder>
-    ): bool acquires FusionOrder {
+    public fun is_auto_cancel_enabled(fusion_order: Object<FusionOrder>): bool acquires FusionOrder {
         let fusion_order_ref = borrow_fusion_order(&fusion_order);
         option::is_some(&fusion_order_ref.allow_resolver_to_cancel_after_timestamp)
     }
@@ -785,17 +792,16 @@ module fusion_plus::fusion_order {
     ///
     /// @param fusion_order The fusion order.
     /// @return bool True if auto-cancel timestamp has passed, false otherwise.
-    public fun is_auto_cancel_active(
-        fusion_order: Object<FusionOrder>
-    ): bool acquires FusionOrder {
+    public fun is_auto_cancel_active(fusion_order: Object<FusionOrder>): bool acquires FusionOrder {
         let fusion_order_ref = borrow_fusion_order(&fusion_order);
         if (option::is_some(&fusion_order_ref.allow_resolver_to_cancel_after_timestamp)) {
-            let auto_cancel_timestamp = *option::borrow(&fusion_order_ref.allow_resolver_to_cancel_after_timestamp);
+            let auto_cancel_timestamp =
+                *option::borrow(
+                    &fusion_order_ref.allow_resolver_to_cancel_after_timestamp
+                );
             let current_time = timestamp::now_seconds();
             current_time >= auto_cancel_timestamp
-        } else {
-            false
-        }
+        } else { false }
     }
 
     // - - - - INTERNAL FUNCTIONS - - - -
@@ -805,9 +811,12 @@ module fusion_plus::fusion_order {
     }
 
     // If resolver whitelist contains zero address, then any resolver can fill the order
-    fun is_valid_resolver(fusion_order: Object<FusionOrder>, resolver: address): bool acquires FusionOrder {
+    fun is_valid_resolver(
+        fusion_order: Object<FusionOrder>, resolver: address
+    ): bool acquires FusionOrder {
         let fusion_order_ref = borrow_fusion_order(&fusion_order);
-        vector::contains(&fusion_order_ref.resolver_whitelist, &@0x0) || vector::contains(&fusion_order_ref.resolver_whitelist, &resolver)
+        vector::contains(&fusion_order_ref.resolver_whitelist, &@0x0)
+            || vector::contains(&fusion_order_ref.resolver_whitelist, &resolver)
     }
 
     // - - - - BORROW FUNCTIONS - - - -

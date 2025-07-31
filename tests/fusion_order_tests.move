@@ -40,7 +40,6 @@ module fusion_plus::fusion_order_tests {
         let account_2 = common::initialize_account_with_fa(@0x202);
         let resolver = common::initialize_account_with_fa(@0x203);
 
-
         let (metadata, mint_ref) = common::create_test_token(
             &fusion_signer, b"Test Token"
         );
@@ -77,7 +76,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -213,7 +212,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -261,7 +260,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -286,14 +285,16 @@ module fusion_plus::fusion_order_tests {
 
         // Resolver accepts the full order (None for full fill)
         let (main_asset, safety_deposit_asset) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::none<u64>());
+            fusion_order::resolver_accept_order(&resolver, fusion_order, option::none());
 
         // Verify the object is deleted (full fill)
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == false, 0);
 
         // Verify resolver received the assets
         assert!(fungible_asset::amount(&main_asset) == ASSET_AMOUNT, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset) == SAFETY_DEPOSIT_AMOUNT, 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset) == SAFETY_DEPOSIT_AMOUNT, 0
+        );
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, main_asset);
@@ -306,7 +307,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(11); // 11 segments
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -330,13 +331,18 @@ module fusion_plus::fusion_order_tests {
         assert!(!fusion_order::is_completely_filled(fusion_order), 0);
 
         // Log initial balances
-        let initial_main_balance = primary_fungible_store::balance(fusion_order_address, metadata);
-        let initial_safety_balance = primary_fungible_store::balance(fusion_order_address, safety_deposit_metadata());
-
+        let initial_main_balance =
+            primary_fungible_store::balance(fusion_order_address, metadata);
+        let initial_safety_balance =
+            primary_fungible_store::balance(
+                fusion_order_address, safety_deposit_metadata()
+            );
 
         // First partial fill: segments 0-2 (3 segments)
         let (main_asset1, safety_deposit_asset1) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(2));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(2)
+            );
 
         // Verify order still exists
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
@@ -346,7 +352,10 @@ module fusion_plus::fusion_order_tests {
         let expected_amount1 = (ASSET_AMOUNT * 3) / 10;
         let expected_safety_deposit1 = (SAFETY_DEPOSIT_AMOUNT * 3) / 10;
         assert!(fungible_asset::amount(&main_asset1) == expected_amount1, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset1) == expected_safety_deposit1, 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset1) == expected_safety_deposit1,
+            0
+        );
 
         // Clean up first assets
         primary_fungible_store::deposit(@0x0, main_asset1);
@@ -357,7 +366,9 @@ module fusion_plus::fusion_order_tests {
 
         // Second partial fill: segments 3-5 (3 segments)
         let (main_asset2, safety_deposit_asset2) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(5));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(5)
+            );
 
         // Verify order still exists
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
@@ -367,7 +378,10 @@ module fusion_plus::fusion_order_tests {
         let expected_amount2 = (ASSET_AMOUNT * 3) / 10;
         let expected_safety_deposit2 = (SAFETY_DEPOSIT_AMOUNT * 3) / 10;
         assert!(fungible_asset::amount(&main_asset2) == expected_amount2, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset2) == expected_safety_deposit2, 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset2) == expected_safety_deposit2,
+            0
+        );
 
         // Clean up second assets
         primary_fungible_store::deposit(@0x0, main_asset2);
@@ -375,13 +389,18 @@ module fusion_plus::fusion_order_tests {
 
         // Third partial fill: segments 6-9 (4 segments) - CORRECT: don't use segment 10
         let (main_asset3, safety_deposit_asset3) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(9));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(9)
+            );
 
         // Verify third fill amounts (4/10 of total)
         let expected_amount3 = (ASSET_AMOUNT * 4) / 10;
         let expected_safety_deposit3 = (SAFETY_DEPOSIT_AMOUNT * 4) / 10;
         assert!(fungible_asset::amount(&main_asset3) == expected_amount3, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset3) == expected_safety_deposit3, 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset3) == expected_safety_deposit3,
+            0
+        );
 
         // Clean up third assets
         primary_fungible_store::deposit(@0x0, main_asset3);
@@ -391,7 +410,6 @@ module fusion_plus::fusion_order_tests {
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == false, 0);
     }
 
-
     #[test]
     #[expected_failure(abort_code = fusion_order::EINVALID_SEGMENT)]
     fun test_multiple_partial_fills_incorrect_index() {
@@ -399,7 +417,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(11); // 11 segments
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -423,13 +441,18 @@ module fusion_plus::fusion_order_tests {
         assert!(!fusion_order::is_completely_filled(fusion_order), 0);
 
         // Log initial balances
-        let initial_main_balance = primary_fungible_store::balance(fusion_order_address, metadata);
-        let initial_safety_balance = primary_fungible_store::balance(fusion_order_address, safety_deposit_metadata());
-
+        let initial_main_balance =
+            primary_fungible_store::balance(fusion_order_address, metadata);
+        let initial_safety_balance =
+            primary_fungible_store::balance(
+                fusion_order_address, safety_deposit_metadata()
+            );
 
         // First partial fill: segments 0-2 (3 segments)
         let (main_asset1, safety_deposit_asset1) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(2));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(2)
+            );
 
         // Verify order still exists
         assert!(object::object_exists<FusionOrder>(fusion_order_address) == true, 0);
@@ -439,7 +462,10 @@ module fusion_plus::fusion_order_tests {
         let expected_amount1 = (ASSET_AMOUNT * 3) / 10;
         let expected_safety_deposit1 = (SAFETY_DEPOSIT_AMOUNT * 3) / 10;
         assert!(fungible_asset::amount(&main_asset1) == expected_amount1, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset1) == expected_safety_deposit1, 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset1) == expected_safety_deposit1,
+            0
+        );
 
         // Clean up first assets
         primary_fungible_store::deposit(@0x0, main_asset1);
@@ -449,14 +475,18 @@ module fusion_plus::fusion_order_tests {
         assert!(last_filled_segment == option::some<u64>(2), 0);
 
         // Log balances before second fill
-        let second_main_balance = primary_fungible_store::balance(fusion_order_address, metadata);
-        let second_safety_balance = primary_fungible_store::balance(fusion_order_address, safety_deposit_metadata());
-
+        let second_main_balance =
+            primary_fungible_store::balance(fusion_order_address, metadata);
+        let second_safety_balance =
+            primary_fungible_store::balance(
+                fusion_order_address, safety_deposit_metadata()
+            );
 
         // Second partial fill: segments 3-5 (3 segments)
         let (main_asset2, safety_deposit_asset2) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(5));
-
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(5)
+            );
 
         let last_filled_segment = fusion_order::get_last_filled_segment(fusion_order);
         assert!(last_filled_segment == option::some<u64>(5), 0);
@@ -469,20 +499,29 @@ module fusion_plus::fusion_order_tests {
         let expected_amount2 = (ASSET_AMOUNT * 3) / 10;
         let expected_safety_deposit2 = (SAFETY_DEPOSIT_AMOUNT * 3) / 10;
         assert!(fungible_asset::amount(&main_asset2) == expected_amount2, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset2) == expected_safety_deposit2, 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset2) == expected_safety_deposit2,
+            0
+        );
 
         // Clean up second assets
         primary_fungible_store::deposit(@0x0, main_asset2);
         primary_fungible_store::deposit(@0x0, safety_deposit_asset2);
 
         // Log balances before final fill
-        let final_main_balance = primary_fungible_store::balance(fusion_order_address, metadata);
-        let final_safety_balance = primary_fungible_store::balance(fusion_order_address, safety_deposit_metadata());
+        let final_main_balance =
+            primary_fungible_store::balance(fusion_order_address, metadata);
+        let final_safety_balance =
+            primary_fungible_store::balance(
+                fusion_order_address, safety_deposit_metadata()
+            );
 
         // Final fill: segments 6-10 (5 segments, completing the order) - THIS SHOULD FAIL
         // The last segment (10) is reserved for 100% fill only
         let (main_asset3, safety_deposit_asset3) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(10));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(10)
+            );
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, main_asset3);
@@ -498,7 +537,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         fusion_order::new(
             &owner,
@@ -522,7 +561,7 @@ module fusion_plus::fusion_order_tests {
 
         let empty_hashes = vector::empty<vector<u8>>();
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         fusion_order::new(
             &owner,
@@ -546,7 +585,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let insufficient_amount = 1000000000000000; // Amount larger than available balance
 
@@ -572,7 +611,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let empty_whitelist = vector::empty<address>();
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         fusion_order::new(
             &owner,
@@ -596,7 +635,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(11); // 11 hashes
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         // Amount not divisible by (num_hashes - 1) = 10
         let invalid_amount = 100000001; // Not divisible by 10
@@ -617,13 +656,17 @@ module fusion_plus::fusion_order_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = fusion_order::EINVALID_SAFETY_DEPOSIT_AMOUNT_FOR_PARTIAL_FILL)]
+    #[
+        expected_failure(
+            abort_code = fusion_order::EINVALID_SAFETY_DEPOSIT_AMOUNT_FOR_PARTIAL_FILL
+        )
+    ]
     fun test_create_fusion_order_invalid_safety_deposit_for_partial_fill() {
         let (owner, _, resolver, metadata, _) = setup_test();
 
         let hashes = create_test_hashes(11); // 11 hashes
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         // Safety deposit not divisible by (num_hashes - 1) = 10
         let invalid_safety_deposit = 101; // Not divisible by 10
@@ -650,7 +693,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -680,7 +723,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -702,7 +745,9 @@ module fusion_plus::fusion_order_tests {
 
         // Try to accept order with invalid resolver
         let (asset, safety_deposit_asset) =
-            fusion_order::resolver_accept_order(&invalid_resolver, fusion_order, option::none<u64>());
+            fusion_order::resolver_accept_order(
+                &invalid_resolver, fusion_order, option::none()
+            );
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, asset);
@@ -716,7 +761,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         // Create a fusion order
         let fusion_order =
@@ -744,7 +789,7 @@ module fusion_plus::fusion_order_tests {
 
         // Try to accept deleted order
         let (asset, safety_deposit_asset) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::none<u64>());
+            fusion_order::resolver_accept_order(&resolver, fusion_order, option::none());
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, asset);
@@ -758,7 +803,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(11);
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -777,7 +822,9 @@ module fusion_plus::fusion_order_tests {
 
         // First partial fill: segments 0-2
         let (main_asset1, safety_deposit_asset1) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(2));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(2)
+            );
 
         // Clean up first assets
         primary_fungible_store::deposit(@0x0, main_asset1);
@@ -785,7 +832,9 @@ module fusion_plus::fusion_order_tests {
 
         // Try to fill segments 0-1 again (out of order) - should fail
         let (main_asset2, safety_deposit_asset2) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(1));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(1)
+            );
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, main_asset2);
@@ -799,7 +848,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(11);
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -818,7 +867,9 @@ module fusion_plus::fusion_order_tests {
 
         // First partial fill: segments 0-2
         let (main_asset1, safety_deposit_asset1) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(2));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(2)
+            );
 
         // Clean up first assets
         primary_fungible_store::deposit(@0x0, main_asset1);
@@ -826,7 +877,9 @@ module fusion_plus::fusion_order_tests {
 
         // Try to fill segments 0-2 again (same segment) - should fail
         let (main_asset2, safety_deposit_asset2) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(2));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(2)
+            );
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, main_asset2);
@@ -849,7 +902,7 @@ module fusion_plus::fusion_order_tests {
         let hashes1 = create_test_hashes(1);
         let hashes2 = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order1 =
             fusion_order::new(
@@ -934,7 +987,7 @@ module fusion_plus::fusion_order_tests {
         let hashes1 = create_test_hashes(1);
         let hashes2 = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order1 =
             fusion_order::new(
@@ -995,7 +1048,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         // Create the fusion order
         let fusion_order =
@@ -1039,7 +1092,7 @@ module fusion_plus::fusion_order_tests {
         vector::push_back(&mut hashes, large_hash);
 
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -1071,12 +1124,13 @@ module fusion_plus::fusion_order_tests {
         let resolver2 = account::create_account_for_test(@0x204);
         let fusion_signer = account::create_account_for_test(@fusion_plus);
 
-
         let hashes1 = create_test_hashes(1);
         let hashes2 = create_test_hashes(1);
-        let resolver_whitelist1 = create_resolver_whitelist(signer::address_of(&resolver1));
-        let resolver_whitelist2 = create_resolver_whitelist(signer::address_of(&resolver2));
-        let auto_cancel_after = option::none<u64>();
+        let resolver_whitelist1 =
+            create_resolver_whitelist(signer::address_of(&resolver1));
+        let resolver_whitelist2 =
+            create_resolver_whitelist(signer::address_of(&resolver2));
+        let auto_cancel_after = option::none();
 
         let fusion_order1 =
             fusion_order::new(
@@ -1095,7 +1149,9 @@ module fusion_plus::fusion_order_tests {
 
         // First resolver accepts the order
         let (asset1, safety_deposit_asset1) =
-            fusion_order::resolver_accept_order(&resolver1, fusion_order1, option::none<u64>());
+            fusion_order::resolver_accept_order(
+                &resolver1, fusion_order1, option::none()
+            );
 
         // Verify assets are received
         assert!(fungible_asset::amount(&asset1) == ASSET_AMOUNT, 0);
@@ -1126,7 +1182,9 @@ module fusion_plus::fusion_order_tests {
 
         // Second resolver accepts the order
         let (asset2, safety_deposit_asset2) =
-            fusion_order::resolver_accept_order(&resolver2, fusion_order2, option::none<u64>());
+            fusion_order::resolver_accept_order(
+                &resolver2, fusion_order2, option::none()
+            );
 
         // Verify assets are received
         assert!(
@@ -1155,7 +1213,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -1213,7 +1271,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(11);
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -1232,13 +1290,17 @@ module fusion_plus::fusion_order_tests {
 
         // Fill just one segment (0)
         let (main_asset, safety_deposit_asset) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(0));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(0)
+            );
 
         // Verify amounts (1/10 of total)
         let expected_amount = ASSET_AMOUNT / 10;
         let expected_safety_deposit = SAFETY_DEPOSIT_AMOUNT / 10;
         assert!(fungible_asset::amount(&main_asset) == expected_amount, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset) == expected_safety_deposit, 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset) == expected_safety_deposit, 0
+        );
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, main_asset);
@@ -1251,7 +1313,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(11);
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -1270,13 +1332,17 @@ module fusion_plus::fusion_order_tests {
 
         // Fill segments 0-8 (9 segments, leaving 1 segment)
         let (main_asset, safety_deposit_asset) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(8));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(8)
+            );
 
         // Verify amounts (9/10 of total)
         let expected_amount = (ASSET_AMOUNT * 9) / 10;
         let expected_safety_deposit = (SAFETY_DEPOSIT_AMOUNT * 9) / 10;
         assert!(fungible_asset::amount(&main_asset) == expected_amount, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset) == expected_safety_deposit, 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset) == expected_safety_deposit, 0
+        );
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, main_asset);
@@ -1311,13 +1377,17 @@ module fusion_plus::fusion_order_tests {
 
         // Fill segments 0-4 (5 segments)
         let (main_asset, safety_deposit_asset) =
-            fusion_order::resolver_accept_order(&resolver, fusion_order, option::some<u64>(4));
+            fusion_order::resolver_accept_order(
+                &resolver, fusion_order, option::some<u64>(4)
+            );
 
         // Verify amounts (5/10 of total)
         let expected_amount = (ASSET_AMOUNT * 5) / 10;
         let expected_safety_deposit = (SAFETY_DEPOSIT_AMOUNT * 5) / 10;
         assert!(fungible_asset::amount(&main_asset) == expected_amount, 0);
-        assert!(fungible_asset::amount(&safety_deposit_asset) == expected_safety_deposit, 0);
+        assert!(
+            fungible_asset::amount(&safety_deposit_asset) == expected_safety_deposit, 0
+        );
 
         // Clean up assets
         primary_fungible_store::deposit(@0x0, main_asset);
@@ -1330,7 +1400,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(11);
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -1359,12 +1429,24 @@ module fusion_plus::fusion_order_tests {
         let wrong_secret = b"wrong_secret";
 
         // Verify correct secrets
-        assert!(fusion_order::verify_secret_for_segment(fusion_order, 0, secret_0), 0);
-        assert!(fusion_order::verify_secret_for_segment(fusion_order, 5, secret_5), 0);
+        assert!(
+            fusion_order::verify_secret_for_segment(fusion_order, 0, secret_0),
+            0
+        );
+        assert!(
+            fusion_order::verify_secret_for_segment(fusion_order, 5, secret_5),
+            0
+        );
 
         // Verify wrong secrets
-        assert!(!fusion_order::verify_secret_for_segment(fusion_order, 0, wrong_secret), 0);
-        assert!(!fusion_order::verify_secret_for_segment(fusion_order, 5, wrong_secret), 0);
+        assert!(
+            !fusion_order::verify_secret_for_segment(fusion_order, 0, wrong_secret),
+            0
+        );
+        assert!(
+            !fusion_order::verify_secret_for_segment(fusion_order, 5, wrong_secret),
+            0
+        );
 
         // Cancel the order
         fusion_order::cancel(&maker, fusion_order);
@@ -1376,7 +1458,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(11);
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -1413,7 +1495,7 @@ module fusion_plus::fusion_order_tests {
 
         let hashes = create_test_hashes(1);
         let resolver_whitelist = create_resolver_whitelist(@0x203);
-        let auto_cancel_after = option::none<u64>();
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -1441,5 +1523,4 @@ module fusion_plus::fusion_order_tests {
         fusion_order::delete_for_test(fusion_order);
         assert!(fusion_order::order_exists(fusion_order) == false, 0);
     }
-
 }

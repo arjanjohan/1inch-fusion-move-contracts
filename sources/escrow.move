@@ -112,16 +112,22 @@ module fusion_plus::escrow {
         let (asset, safety_deposit_asset) =
             fusion_order::resolver_accept_order(resolver, fusion_order, segment);
 
-        let segment_hash = if (option::is_some(&segment)) {
-            fusion_order::get_hash_for_segment(fusion_order, *option::borrow(&segment))
-        } else {
-             // Use last hash for full fill
-            fusion_order::get_hash_for_segment(fusion_order, fusion_order::get_max_segments(fusion_order) - 1)
-        };
+        let segment_hash =
+            if (option::is_some(&segment)) {
+                fusion_order::get_hash_for_segment(
+                    fusion_order, *option::borrow(&segment)
+                )
+            } else {
+                // Use last hash for full fill
+                fusion_order::get_hash_for_segment(
+                    fusion_order, fusion_order::get_max_segments(fusion_order) - 1
+                )
+            };
         if (option::is_some(&segment)) {
             // Validate partial fill is allowed
             assert!(
-                fusion_order::is_partial_fill_allowed(fusion_order), EINVALID_FILL_TYPE
+                fusion_order::is_partial_fill_allowed(fusion_order),
+                EINVALID_FILL_TYPE
             );
 
             let max_segments = fusion_order::get_max_segments(fusion_order);
@@ -182,7 +188,8 @@ module fusion_plus::escrow {
         assert!(segment < max_segments, EINVALID_SEGMENT);
 
         // Fill the auction and get assets (this handles all validation and withdrawal)
-        let (asset, safety_deposit_asset) = dutch_auction::fill_auction(resolver, auction, option::some<u64>(segment));
+        let (asset, safety_deposit_asset) =
+            dutch_auction::fill_auction(resolver, auction, option::some<u64>(segment));
 
         // Get auction details
         let order_hash = dutch_auction::get_order_hash(auction);

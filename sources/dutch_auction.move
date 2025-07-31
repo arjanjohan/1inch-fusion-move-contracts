@@ -106,11 +106,11 @@ module fusion_plus::dutch_auction {
     }
 
     struct AuctionParams has store, copy, drop {
-        starting_amount: u64,      // B tokens needed for 100% fill at start
-        ending_amount: u64,        // B tokens needed for 100% fill at end
+        starting_amount: u64, // B tokens needed for 100% fill at start
+        ending_amount: u64, // B tokens needed for 100% fill at end
         auction_start_time: u64,
         auction_end_time: u64,
-        decay_duration: u64        // Duration over which amount decays
+        decay_duration: u64 // Duration over which amount decays
     }
 
     // - - - - PUBLIC FUNCTIONS - - - -
@@ -151,7 +151,10 @@ module fusion_plus::dutch_auction {
         assert!(starting_amount > ending_amount, EINVALID_AUCTION_PARAMS);
         assert!(auction_start_time < auction_end_time, EINVALID_AUCTION_PARAMS);
         assert!(decay_duration > 0, EINVALID_AUCTION_PARAMS);
-        assert!(auction_end_time > auction_start_time + decay_duration, EINVALID_AUCTION_PARAMS);
+        assert!(
+            auction_end_time > auction_start_time + decay_duration,
+            EINVALID_AUCTION_PARAMS
+        );
 
         // Validate amounts
         assert!(starting_amount > 0, EINVALID_AMOUNT);
@@ -163,7 +166,10 @@ module fusion_plus::dutch_auction {
         let num_hashes = vector::length(&hashes);
         if (num_hashes > 1) {
             // Validate that safety deposit is divisible by number of partial segments
-            assert!(safety_deposit_amount % (num_hashes - 1) == 0, EINVALID_SAFETY_DEPOSIT_AMOUNT);
+            assert!(
+                safety_deposit_amount % (num_hashes - 1) == 0,
+                EINVALID_SAFETY_DEPOSIT_AMOUNT
+            );
         };
 
         // Validate hashes
@@ -251,16 +257,13 @@ module fusion_plus::dutch_auction {
 
         // Emit cancellation event
         event::emit(
-            DutchAuctionCancelledEvent {
-                auction,
-                maker: signer_address,
-                order_hash
-            }
+            DutchAuctionCancelledEvent { auction, maker: signer_address, order_hash }
         );
 
         // Delete the auction object after cancellation
         let controller = borrow_dutch_auction_controller_mut(&auction);
-        let DutchAuctionController { extend_ref, delete_ref } = move_from(object::object_address(&auction));
+        let DutchAuctionController { extend_ref, delete_ref } =
+            move_from(object::object_address(&auction));
         object::delete(delete_ref);
     }
 
@@ -279,7 +282,8 @@ module fusion_plus::dutch_auction {
         };
 
         // If decay period is over, return ending amount
-        let decay_end_time = auction_params.auction_start_time + auction_params.decay_duration;
+        let decay_end_time =
+            auction_params.auction_start_time + auction_params.decay_duration;
         if (current_time >= decay_end_time) {
             return auction_params.ending_amount
         };
@@ -287,7 +291,8 @@ module fusion_plus::dutch_auction {
         // Calculate current amount based on decay
         let elapsed_time = current_time - auction_params.auction_start_time;
         let decay_progress = elapsed_time * 100 / auction_params.decay_duration; // 0-100%
-        let amount_difference = auction_params.starting_amount - auction_params.ending_amount;
+        let amount_difference =
+            auction_params.starting_amount - auction_params.ending_amount;
         let current_decay = (amount_difference * decay_progress) / 100;
 
         auction_params.starting_amount - current_decay
@@ -351,7 +356,10 @@ module fusion_plus::dutch_auction {
 
             if (segment_to_fill == num_hashes - 1) {
                 // Do not allow using the last hash when order is already partially filled
-                assert!(option::is_none(&auction_ref.last_filled_segment), EINVALID_SEGMENT);
+                assert!(
+                    option::is_none(&auction_ref.last_filled_segment),
+                    EINVALID_SEGMENT
+                );
             };
 
             let last_segment = *option::borrow(&auction_ref.last_filled_segment);
@@ -360,8 +368,9 @@ module fusion_plus::dutch_auction {
 
         let numer_of_segments_to_fill: u64;
         if (option::is_some(&auction_ref.last_filled_segment)) {
-            numer_of_segments_to_fill = segment_to_fill + 1 - *option::borrow(&auction_ref.last_filled_segment) - 1 ;
-        } else if (segment_to_fill == num_hashes - 1 &&  num_hashes > 1) {
+            numer_of_segments_to_fill = segment_to_fill + 1
+                - *option::borrow(&auction_ref.last_filled_segment) - 1;
+        } else if (segment_to_fill == num_hashes - 1 && num_hashes > 1) {
             numer_of_segments_to_fill = segment_to_fill;
         } else {
             numer_of_segments_to_fill = segment_to_fill + 1;
@@ -369,7 +378,8 @@ module fusion_plus::dutch_auction {
 
         // Calculate amount for this segment
         let segment_amount = segment_amount * numer_of_segments_to_fill;
-        let safety_deposit_amount = segment_safety_deposit_amount * numer_of_segments_to_fill;
+        let safety_deposit_amount =
+            segment_safety_deposit_amount * numer_of_segments_to_fill;
 
         // Mark segment as filled
         option::swap_or_fill(&mut auction_ref.last_filled_segment, segment_to_fill);
@@ -377,20 +387,23 @@ module fusion_plus::dutch_auction {
         // Check if auction is completely filled
         if (segment_to_fill == num_hashes - 1 || segment_to_fill == num_hashes - 2) {
             let controller = borrow_dutch_auction_controller_mut(&auction);
-            let DutchAuctionController { extend_ref, delete_ref } = move_from(object::object_address(&auction));
+            let DutchAuctionController { extend_ref, delete_ref } =
+                move_from(object::object_address(&auction));
             object::delete(delete_ref);
         };
 
         // Withdraw assets from resolver to prevent gaming
-        let asset = primary_fungible_store::withdraw(
-            signer, auction_ref.metadata, segment_amount
-        );
+        let asset =
+            primary_fungible_store::withdraw(
+                signer, auction_ref.metadata, segment_amount
+            );
 
-        let safety_deposit_asset = primary_fungible_store::withdraw(
-            signer,
-            safety_deposit_metadata(),
-            safety_deposit_amount
-        );
+        let safety_deposit_asset =
+            primary_fungible_store::withdraw(
+                signer,
+                safety_deposit_metadata(),
+                safety_deposit_amount
+            );
 
         // Emit fill event
         event::emit(
@@ -565,7 +578,9 @@ module fusion_plus::dutch_auction {
     ///
     /// @param auction The auction to get the segment amount from.
     /// @return u64 The segment amount.
-    public fun get_segment_safety_deposit_amount(auction: Object<DutchAuction>): u64 acquires DutchAuction {
+    public fun get_segment_safety_deposit_amount(
+        auction: Object<DutchAuction>
+    ): u64 acquires DutchAuction {
         let auction_ref = borrow_dutch_auction(&auction);
         let num_hashes = vector::length(&auction_ref.hashes);
         let safety_deposit_amount = auction_ref.safety_deposit_amount;
@@ -599,9 +614,7 @@ module fusion_plus::dutch_auction {
         if (option::is_some(&auction_ref.last_filled_segment)) {
             let last_segment = *option::borrow(&auction_ref.last_filled_segment);
             segment <= last_segment
-        } else {
-            false
-        }
+        } else { false }
     }
 
     /// Verifies a secret for a specific segment by comparing its hash.

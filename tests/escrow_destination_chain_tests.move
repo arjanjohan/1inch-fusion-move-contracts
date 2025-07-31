@@ -38,7 +38,8 @@ module fusion_plus::escrow_destination_chain_tests {
     const AUCTION_END_TIME: u64 = 2000;
     const DECAY_DURATION: u64 = 500;
 
-    fun setup_test(): (signer, signer, signer, signer, signer, signer, Object<Metadata>, MintRef) {
+    fun setup_test():
+        (signer, signer, signer, signer, signer, signer, Object<Metadata>, MintRef) {
         timestamp::set_time_has_started_for_testing(
             &account::create_signer_for_test(@aptos_framework)
         );
@@ -63,7 +64,16 @@ module fusion_plus::escrow_destination_chain_tests {
         common::mint_fa(&mint_ref, MINT_AMOUNT, signer::address_of(&resolver_2));
         common::mint_fa(&mint_ref, MINT_AMOUNT, signer::address_of(&resolver_3));
 
-        (account_1, account_2, account_3, resolver_1, resolver_2, resolver_3, metadata, mint_ref)
+        (
+            account_1,
+            account_2,
+            account_3,
+            resolver_1,
+            resolver_2,
+            resolver_3,
+            metadata,
+            mint_ref
+        )
     }
 
     fun create_test_hashes(num_hashes: u64): vector<vector<u8>> {
@@ -85,7 +95,6 @@ module fusion_plus::escrow_destination_chain_tests {
         whitelist
     }
 
-
     // - - - - DESTINATION CHAIN FLOW TESTS (ETH > APT) - - - -
 
     #[test]
@@ -94,18 +103,19 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with single hash (no partial fills allowed)
         let hashes = create_test_hashes(1);
-        let auction = dutch_auction::new(
-            &maker,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            STARTING_AMOUNT,
-            ENDING_AMOUNT,
-            AUCTION_START_TIME,
-            AUCTION_END_TIME,
-            DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
-        );
+        let auction =
+            dutch_auction::new(
+                &maker,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                STARTING_AMOUNT,
+                ENDING_AMOUNT,
+                AUCTION_START_TIME,
+                AUCTION_END_TIME,
+                DECAY_DURATION,
+                SAFETY_DEPOSIT_AMOUNT
+            );
 
         let auction_address = object::object_address(&auction);
 
@@ -116,14 +126,15 @@ module fusion_plus::escrow_destination_chain_tests {
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME + 100);
 
         // Create escrow with full fill (None parameter)
-        let escrow = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::none(),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::none(),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
 
         let escrow_address = object::object_address(&escrow);
 
@@ -141,12 +152,14 @@ module fusion_plus::escrow_destination_chain_tests {
         assert!(escrow::is_source_chain(escrow) == false, 0);
 
         // Verify assets are in escrow
-        let escrow_main_balance = primary_fungible_store::balance(escrow_address, metadata);
+        let escrow_main_balance =
+            primary_fungible_store::balance(escrow_address, metadata);
         assert!(escrow_main_balance > 0, 0);
 
-        let escrow_safety_deposit_balance = primary_fungible_store::balance(
-            escrow_address, object::address_to_object<Metadata>(@0xa)
-        );
+        let escrow_safety_deposit_balance =
+            primary_fungible_store::balance(
+                escrow_address, object::address_to_object<Metadata>(@0xa)
+            );
         assert!(escrow_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT, 0);
     }
 
@@ -156,18 +169,19 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction = dutch_auction::new(
-            &maker,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            STARTING_AMOUNT,
-            ENDING_AMOUNT,
-            AUCTION_START_TIME,
-            AUCTION_END_TIME,
-            DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
-        );
+        let auction =
+            dutch_auction::new(
+                &maker,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                STARTING_AMOUNT,
+                ENDING_AMOUNT,
+                AUCTION_START_TIME,
+                AUCTION_END_TIME,
+                DECAY_DURATION,
+                SAFETY_DEPOSIT_AMOUNT
+            );
 
         let auction_address = object::object_address(&auction);
 
@@ -178,14 +192,15 @@ module fusion_plus::escrow_destination_chain_tests {
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME + 100);
 
         // Create escrow with full fill (None parameter)
-        let escrow = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::none(),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::none(),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
 
         let escrow_address = object::object_address(&escrow);
 
@@ -203,12 +218,14 @@ module fusion_plus::escrow_destination_chain_tests {
         assert!(escrow::is_source_chain(escrow) == false, 0);
 
         // Verify assets are in escrow
-        let escrow_main_balance = primary_fungible_store::balance(escrow_address, metadata);
+        let escrow_main_balance =
+            primary_fungible_store::balance(escrow_address, metadata);
         assert!(escrow_main_balance > 0, 0);
 
-        let escrow_safety_deposit_balance = primary_fungible_store::balance(
-            escrow_address, object::address_to_object<Metadata>(@0xa)
-        );
+        let escrow_safety_deposit_balance =
+            primary_fungible_store::balance(
+                escrow_address, object::address_to_object<Metadata>(@0xa)
+            );
         assert!(escrow_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT, 0);
     }
 
@@ -218,18 +235,19 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction = dutch_auction::new(
-            &maker,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            STARTING_AMOUNT,
-            ENDING_AMOUNT,
-            AUCTION_START_TIME,
-            AUCTION_END_TIME,
-            DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
-        );
+        let auction =
+            dutch_auction::new(
+                &maker,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                STARTING_AMOUNT,
+                ENDING_AMOUNT,
+                AUCTION_START_TIME,
+                AUCTION_END_TIME,
+                DECAY_DURATION,
+                SAFETY_DEPOSIT_AMOUNT
+            );
 
         let auction_address = object::object_address(&auction);
 
@@ -240,14 +258,15 @@ module fusion_plus::escrow_destination_chain_tests {
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME + 100);
 
         // Create escrow with partial fill (segment 0)
-        let escrow = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::some(0),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::some(0),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
 
         let escrow_address = object::object_address(&escrow);
 
@@ -265,12 +284,14 @@ module fusion_plus::escrow_destination_chain_tests {
         assert!(escrow::is_source_chain(escrow) == false, 0);
 
         // Verify assets are in escrow
-        let escrow_main_balance = primary_fungible_store::balance(escrow_address, metadata);
+        let escrow_main_balance =
+            primary_fungible_store::balance(escrow_address, metadata);
         assert!(escrow_main_balance > 0, 0);
 
-        let escrow_safety_deposit_balance = primary_fungible_store::balance(
-            escrow_address, object::address_to_object<Metadata>(@0xa)
-        );
+        let escrow_safety_deposit_balance =
+            primary_fungible_store::balance(
+                escrow_address, object::address_to_object<Metadata>(@0xa)
+            );
         assert!(escrow_safety_deposit_balance > 0, 0);
     }
 
@@ -280,18 +301,19 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction = dutch_auction::new(
-            &maker,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            STARTING_AMOUNT,
-            ENDING_AMOUNT,
-            AUCTION_START_TIME,
-            AUCTION_END_TIME,
-            DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
-        );
+        let auction =
+            dutch_auction::new(
+                &maker,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                STARTING_AMOUNT,
+                ENDING_AMOUNT,
+                AUCTION_START_TIME,
+                AUCTION_END_TIME,
+                DECAY_DURATION,
+                SAFETY_DEPOSIT_AMOUNT
+            );
 
         let auction_address = object::object_address(&auction);
 
@@ -302,14 +324,15 @@ module fusion_plus::escrow_destination_chain_tests {
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME + 100);
 
         // Create escrow with partial fill (segments 0-2, so 3 segments)
-        let escrow = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::some(2),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::some(2),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
 
         let escrow_address = object::object_address(&escrow);
 
@@ -327,12 +350,14 @@ module fusion_plus::escrow_destination_chain_tests {
         assert!(escrow::is_source_chain(escrow) == false, 0);
 
         // Verify assets are in escrow
-        let escrow_main_balance = primary_fungible_store::balance(escrow_address, metadata);
+        let escrow_main_balance =
+            primary_fungible_store::balance(escrow_address, metadata);
         assert!(escrow_main_balance > 0, 0);
 
-        let escrow_safety_deposit_balance = primary_fungible_store::balance(
-            escrow_address, object::address_to_object<Metadata>(@0xa)
-        );
+        let escrow_safety_deposit_balance =
+            primary_fungible_store::balance(
+                escrow_address, object::address_to_object<Metadata>(@0xa)
+            );
         assert!(escrow_safety_deposit_balance > 0, 0);
     }
 
@@ -342,18 +367,19 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction = dutch_auction::new(
-            &maker,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            STARTING_AMOUNT,
-            ENDING_AMOUNT,
-            AUCTION_START_TIME,
-            AUCTION_END_TIME,
-            DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
-        );
+        let auction =
+            dutch_auction::new(
+                &maker,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                STARTING_AMOUNT,
+                ENDING_AMOUNT,
+                AUCTION_START_TIME,
+                AUCTION_END_TIME,
+                DECAY_DURATION,
+                SAFETY_DEPOSIT_AMOUNT
+            );
 
         let auction_address = object::object_address(&auction);
 
@@ -364,14 +390,15 @@ module fusion_plus::escrow_destination_chain_tests {
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME + 100);
 
         // First partial fill: segments 0-1 (2 segments)
-        let escrow1 = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::some(1),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow1 =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::some(1),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
         let escrow1_address = object::object_address(&escrow1);
 
         // Verify first escrow properties
@@ -380,14 +407,15 @@ module fusion_plus::escrow_destination_chain_tests {
         assert!(escrow::is_source_chain(escrow1) == false, 0);
 
         // Second partial fill: segments 2-4 (3 segments)
-        let escrow2 = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::some(4),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow2 =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::some(4),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
         let escrow2_address = object::object_address(&escrow2);
 
         // Verify second escrow properties
@@ -409,18 +437,19 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction = dutch_auction::new(
-            &maker,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            STARTING_AMOUNT,
-            ENDING_AMOUNT,
-            AUCTION_START_TIME,
-            AUCTION_END_TIME,
-            DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
-        );
+        let auction =
+            dutch_auction::new(
+                &maker,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                STARTING_AMOUNT,
+                ENDING_AMOUNT,
+                AUCTION_START_TIME,
+                AUCTION_END_TIME,
+                DECAY_DURATION,
+                SAFETY_DEPOSIT_AMOUNT
+            );
 
         let auction_address = object::object_address(&auction);
 
@@ -431,14 +460,15 @@ module fusion_plus::escrow_destination_chain_tests {
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME + 100);
 
         // Fill segments 0-8 (9 segments)
-        let escrow1 = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::some(8),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow1 =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::some(8),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
         let escrow1_address = object::object_address(&escrow1);
 
         // Verify first escrow properties
@@ -447,14 +477,15 @@ module fusion_plus::escrow_destination_chain_tests {
         assert!(escrow::is_source_chain(escrow1) == false, 0);
 
         // Fill remaining segment 9 (completes the order)
-        let escrow2 = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::some(9),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow2 =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::some(9),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
         let escrow2_address = object::object_address(&escrow2);
 
         // Verify second escrow properties
@@ -476,31 +507,33 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction = dutch_auction::new(
-            &maker,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            STARTING_AMOUNT,
-            ENDING_AMOUNT,
-            AUCTION_START_TIME,
-            AUCTION_END_TIME,
-            DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
-        );
+        let auction =
+            dutch_auction::new(
+                &maker,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                STARTING_AMOUNT,
+                ENDING_AMOUNT,
+                AUCTION_START_TIME,
+                AUCTION_END_TIME,
+                DECAY_DURATION,
+                SAFETY_DEPOSIT_AMOUNT
+            );
 
         // Set time to auction start
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME + 100);
 
         // Create escrow with partial fill (segment 2)
-        let escrow = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::some(2),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::some(2),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
 
         // Fast forward to exclusive phase
         let timelock = escrow::get_timelock(escrow);
@@ -510,10 +543,13 @@ module fusion_plus::escrow_destination_chain_tests {
         );
 
         // Record initial balances
-        let initial_maker_balance = primary_fungible_store::balance(signer::address_of(&maker), metadata);
-        let initial_resolver_safety_deposit_balance = primary_fungible_store::balance(
-            signer::address_of(&resolver_1), object::address_to_object<Metadata>(@0xa)
-        );
+        let initial_maker_balance =
+            primary_fungible_store::balance(signer::address_of(&maker), metadata);
+        let initial_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(
+                signer::address_of(&resolver_1),
+                object::address_to_object<Metadata>(@0xa)
+            );
 
         // Withdraw using the secret for segment 2
         let secret_2 = vector::empty<u8>();
@@ -522,14 +558,21 @@ module fusion_plus::escrow_destination_chain_tests {
         escrow::withdraw(&resolver_1, escrow, secret_2);
 
         // Verify maker received the assets (destination chain: maker gets assets)
-        let final_maker_balance = primary_fungible_store::balance(signer::address_of(&maker), metadata);
+        let final_maker_balance =
+            primary_fungible_store::balance(signer::address_of(&maker), metadata);
         assert!(final_maker_balance > initial_maker_balance, 0);
 
         // Verify resolver received safety deposit back
-        let final_resolver_safety_deposit_balance = primary_fungible_store::balance(
-            signer::address_of(&resolver_1), object::address_to_object<Metadata>(@0xa)
+        let final_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(
+                signer::address_of(&resolver_1),
+                object::address_to_object<Metadata>(@0xa)
+            );
+        assert!(
+            final_resolver_safety_deposit_balance
+                > initial_resolver_safety_deposit_balance,
+            0
         );
-        assert!(final_resolver_safety_deposit_balance > initial_resolver_safety_deposit_balance, 0);
     }
 
     #[test]
@@ -538,18 +581,19 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with single hash
         let hashes = create_test_hashes(1);
-        let auction = dutch_auction::new(
-            &maker,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            STARTING_AMOUNT,
-            ENDING_AMOUNT,
-            AUCTION_START_TIME,
-            AUCTION_END_TIME,
-            DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
-        );
+        let auction =
+            dutch_auction::new(
+                &maker,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                STARTING_AMOUNT,
+                ENDING_AMOUNT,
+                AUCTION_START_TIME,
+                AUCTION_END_TIME,
+                DECAY_DURATION,
+                SAFETY_DEPOSIT_AMOUNT
+            );
 
         // Test price at start of auction
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME + 50);
@@ -558,19 +602,22 @@ module fusion_plus::escrow_destination_chain_tests {
         assert!(price_at_start > ENDING_AMOUNT, 0);
 
         // Test price at end of decay period
-        timestamp::update_global_time_for_test_secs(AUCTION_START_TIME + DECAY_DURATION + 100);
+        timestamp::update_global_time_for_test_secs(
+            AUCTION_START_TIME + DECAY_DURATION + 100
+        );
         let price_at_end = dutch_auction::get_current_amount(auction);
         assert!(price_at_end == ENDING_AMOUNT, 0);
 
         // Create escrow at end price
-        let escrow = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::none(),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::none(),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
 
         let escrow_address = object::object_address(&escrow);
 
@@ -591,18 +638,19 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction = dutch_auction::new(
-            &maker,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            STARTING_AMOUNT,
-            ENDING_AMOUNT,
-            AUCTION_START_TIME,
-            AUCTION_END_TIME,
-            DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
-        );
+        let auction =
+            dutch_auction::new(
+                &maker,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                STARTING_AMOUNT,
+                ENDING_AMOUNT,
+                AUCTION_START_TIME,
+                AUCTION_END_TIME,
+                DECAY_DURATION,
+                SAFETY_DEPOSIT_AMOUNT
+            );
 
         let auction_address = object::object_address(&auction);
 
@@ -610,14 +658,15 @@ module fusion_plus::escrow_destination_chain_tests {
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME + 100);
 
         // First resolver fills segments 0-2
-        let escrow1 = escrow::deploy_destination(
-            &resolver_1,
-            auction,
-            option::some(2),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow1 =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::some(2),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
         let escrow1_address = object::object_address(&escrow1);
 
         // Verify first escrow properties
@@ -626,14 +675,15 @@ module fusion_plus::escrow_destination_chain_tests {
         assert!(escrow::is_source_chain(escrow1) == false, 0);
 
         // Second resolver fills segments 3-5
-        let escrow2 = escrow::deploy_destination(
-            &resolver_2,
-            auction,
-            option::some(5),
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION
-        );
+        let escrow2 =
+            escrow::deploy_destination(
+                &resolver_2,
+                auction,
+                option::some(5),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
         let escrow2_address = object::object_address(&escrow2);
 
         // Verify second escrow properties
@@ -648,5 +698,4 @@ module fusion_plus::escrow_destination_chain_tests {
         // Verify auction still exists (not completely filled yet)
         assert!(object::object_exists<DutchAuction>(auction_address) == true, 0);
     }
-
 }

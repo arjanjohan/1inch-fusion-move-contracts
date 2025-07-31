@@ -31,7 +31,8 @@ module fusion_plus::escrow_source_chain_tests {
     const EXCLUSIVE_DURATION: u64 = 1800; // 30 minutes
     const PRIVATE_CANCELLATION_DURATION: u64 = 900; // 15 minutes
 
-    fun setup_test(): (signer, signer, signer, signer, signer, signer, Object<Metadata>, MintRef) {
+    fun setup_test():
+        (signer, signer, signer, signer, signer, signer, Object<Metadata>, MintRef) {
         timestamp::set_time_has_started_for_testing(
             &account::create_signer_for_test(@aptos_framework)
         );
@@ -56,7 +57,16 @@ module fusion_plus::escrow_source_chain_tests {
         common::mint_fa(&mint_ref, MINT_AMOUNT, signer::address_of(&resolver_2));
         common::mint_fa(&mint_ref, MINT_AMOUNT, signer::address_of(&resolver_3));
 
-        (account_1, account_2, account_3, resolver_1, resolver_2, resolver_3, metadata, mint_ref)
+        (
+            account_1,
+            account_2,
+            account_3,
+            resolver_1,
+            resolver_2,
+            resolver_3,
+            metadata,
+            mint_ref
+        )
     }
 
     fun create_test_hashes(num_hashes: u64): vector<vector<u8>> {
@@ -84,8 +94,9 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Create a fusion order first
         let hashes = create_test_hashes(1);
-        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
-        let auto_cancel_after = option::none<u64>();
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
 
         let fusion_order =
             fusion_order::new(
@@ -154,8 +165,9 @@ module fusion_plus::escrow_source_chain_tests {
         // Create multiple fusion orders
         let hashes1 = create_test_hashes(1);
         let hashes2 = create_test_hashes(1);
-        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
-        let auto_cancel_after = option::none<u64>();
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
 
         let fusion_order1 =
             fusion_order::new(
@@ -219,22 +231,24 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Create a fusion order with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
-        let auto_cancel_after = option::none<u64>();
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
 
-        let fusion_order = fusion_order::new(
-            &owner,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            ASSET_AMOUNT,
-            resolver_whitelist,
-            SAFETY_DEPOSIT_AMOUNT,
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION,
-            auto_cancel_after
-        );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
 
         let fusion_order_address = object::object_address(&fusion_order);
 
@@ -262,12 +276,14 @@ module fusion_plus::escrow_source_chain_tests {
         assert!(escrow::is_source_chain(escrow) == true, 0);
 
         // Verify assets are in escrow
-        let escrow_main_balance = primary_fungible_store::balance(escrow_address, metadata);
+        let escrow_main_balance =
+            primary_fungible_store::balance(escrow_address, metadata);
         assert!(escrow_main_balance == ASSET_AMOUNT, 0);
 
-        let escrow_safety_deposit_balance = primary_fungible_store::balance(
-            escrow_address, object::address_to_object<Metadata>(@0xa)
-        );
+        let escrow_safety_deposit_balance =
+            primary_fungible_store::balance(
+                escrow_address, object::address_to_object<Metadata>(@0xa)
+            );
         assert!(escrow_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT, 0);
     }
 
@@ -277,22 +293,24 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Create a fusion order with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
-        let auto_cancel_after = option::none<u64>();
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
 
-        let fusion_order = fusion_order::new(
-            &owner,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            ASSET_AMOUNT,
-            resolver_whitelist,
-            SAFETY_DEPOSIT_AMOUNT,
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION,
-            auto_cancel_after
-        );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
 
         let fusion_order_address = object::object_address(&fusion_order);
 
@@ -313,20 +331,31 @@ module fusion_plus::escrow_source_chain_tests {
         // Verify escrow properties
         assert!(escrow::get_order_hash(escrow) == ORDER_HASH, 0);
         assert!(escrow::get_metadata(escrow) == metadata, 0);
-        assert!(escrow::get_amount(escrow) == ASSET_AMOUNT / 10, 0); // 1/10 of total
-        assert!(escrow::get_safety_deposit_amount(escrow) == SAFETY_DEPOSIT_AMOUNT / 10, 0);
+        assert!(
+            escrow::get_amount(escrow) == ASSET_AMOUNT / 10,
+            0
+        ); // 1/10 of total
+        assert!(
+            escrow::get_safety_deposit_amount(escrow) == SAFETY_DEPOSIT_AMOUNT / 10,
+            0
+        );
         assert!(escrow::get_maker(escrow) == signer::address_of(&owner), 0);
         assert!(escrow::get_taker(escrow) == signer::address_of(&resolver_1), 0);
         assert!(escrow::is_source_chain(escrow) == true, 0);
 
         // Verify assets are in escrow
-        let escrow_main_balance = primary_fungible_store::balance(escrow_address, metadata);
+        let escrow_main_balance =
+            primary_fungible_store::balance(escrow_address, metadata);
         assert!(escrow_main_balance == ASSET_AMOUNT / 10, 0);
 
-        let escrow_safety_deposit_balance = primary_fungible_store::balance(
-            escrow_address, object::address_to_object<Metadata>(@0xa)
+        let escrow_safety_deposit_balance =
+            primary_fungible_store::balance(
+                escrow_address, object::address_to_object<Metadata>(@0xa)
+            );
+        assert!(
+            escrow_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT / 10,
+            0
         );
-        assert!(escrow_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT / 10, 0);
     }
 
     #[test]
@@ -335,22 +364,24 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Create a fusion order with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
-        let auto_cancel_after = option::none<u64>();
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
 
-        let fusion_order = fusion_order::new(
-            &owner,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            ASSET_AMOUNT,
-            resolver_whitelist,
-            SAFETY_DEPOSIT_AMOUNT,
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION,
-            auto_cancel_after
-        );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
 
         let fusion_order_address = object::object_address(&fusion_order);
 
@@ -371,20 +402,31 @@ module fusion_plus::escrow_source_chain_tests {
         // Verify escrow properties
         assert!(escrow::get_order_hash(escrow) == ORDER_HASH, 0);
         assert!(escrow::get_metadata(escrow) == metadata, 0);
-        assert!(escrow::get_amount(escrow) == (ASSET_AMOUNT * 3) / 10, 0); // 3/10 of total
-        assert!(escrow::get_safety_deposit_amount(escrow) == (SAFETY_DEPOSIT_AMOUNT * 3) / 10, 0);
+        assert!(
+            escrow::get_amount(escrow) == (ASSET_AMOUNT * 3) / 10,
+            0
+        ); // 3/10 of total
+        assert!(
+            escrow::get_safety_deposit_amount(escrow) == (SAFETY_DEPOSIT_AMOUNT * 3) / 10,
+            0
+        );
         assert!(escrow::get_maker(escrow) == signer::address_of(&owner), 0);
         assert!(escrow::get_taker(escrow) == signer::address_of(&resolver_1), 0);
         assert!(escrow::is_source_chain(escrow) == true, 0);
 
         // Verify assets are in escrow
-        let escrow_main_balance = primary_fungible_store::balance(escrow_address, metadata);
+        let escrow_main_balance =
+            primary_fungible_store::balance(escrow_address, metadata);
         assert!(escrow_main_balance == (ASSET_AMOUNT * 3) / 10, 0);
 
-        let escrow_safety_deposit_balance = primary_fungible_store::balance(
-            escrow_address, object::address_to_object<Metadata>(@0xa)
+        let escrow_safety_deposit_balance =
+            primary_fungible_store::balance(
+                escrow_address, object::address_to_object<Metadata>(@0xa)
+            );
+        assert!(
+            escrow_safety_deposit_balance == (SAFETY_DEPOSIT_AMOUNT * 3) / 10,
+            0
         );
-        assert!(escrow_safety_deposit_balance == (SAFETY_DEPOSIT_AMOUNT * 3) / 10, 0);
     }
 
     #[test]
@@ -393,22 +435,24 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Create a fusion order with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
-        let auto_cancel_after = option::none<u64>();
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
 
-        let fusion_order = fusion_order::new(
-            &owner,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            ASSET_AMOUNT,
-            resolver_whitelist,
-            SAFETY_DEPOSIT_AMOUNT,
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION,
-            auto_cancel_after
-        );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
 
         let fusion_order_address = object::object_address(&fusion_order);
 
@@ -417,16 +461,30 @@ module fusion_plus::escrow_source_chain_tests {
         let escrow1_address = object::object_address(&escrow1);
 
         // Verify first escrow properties
-        assert!(escrow::get_amount(escrow1) == (ASSET_AMOUNT * 2) / 10, 0);
-        assert!(escrow::get_safety_deposit_amount(escrow1) == (SAFETY_DEPOSIT_AMOUNT * 2) / 10, 0);
+        assert!(
+            escrow::get_amount(escrow1) == (ASSET_AMOUNT * 2) / 10,
+            0
+        );
+        assert!(
+            escrow::get_safety_deposit_amount(escrow1)
+                == (SAFETY_DEPOSIT_AMOUNT * 2) / 10,
+            0
+        );
 
         // Second partial fill: segments 2-4 (3 segments)
         let escrow2 = escrow::deploy_source(&resolver_1, fusion_order, option::some(4));
         let escrow2_address = object::object_address(&escrow2);
 
         // Verify second escrow properties
-        assert!(escrow::get_amount(escrow2) == (ASSET_AMOUNT * 3) / 10, 0);
-        assert!(escrow::get_safety_deposit_amount(escrow2) == (SAFETY_DEPOSIT_AMOUNT * 3) / 10, 0);
+        assert!(
+            escrow::get_amount(escrow2) == (ASSET_AMOUNT * 3) / 10,
+            0
+        );
+        assert!(
+            escrow::get_safety_deposit_amount(escrow2)
+                == (SAFETY_DEPOSIT_AMOUNT * 3) / 10,
+            0
+        );
 
         // Verify both escrows exist
         assert!(object::object_exists<Escrow>(escrow1_address) == true, 0);
@@ -442,22 +500,24 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Create a fusion order with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
-        let auto_cancel_after = option::none<u64>();
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
 
-        let fusion_order = fusion_order::new(
-            &owner,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            ASSET_AMOUNT,
-            resolver_whitelist,
-            SAFETY_DEPOSIT_AMOUNT,
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION,
-            auto_cancel_after
-        );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
 
         let fusion_order_address = object::object_address(&fusion_order);
 
@@ -466,8 +526,15 @@ module fusion_plus::escrow_source_chain_tests {
         let escrow1_address = object::object_address(&escrow1);
 
         // Verify first escrow properties
-        assert!(escrow::get_amount(escrow1) == (ASSET_AMOUNT * 9) / 10, 0);
-        assert!(escrow::get_safety_deposit_amount(escrow1) == (SAFETY_DEPOSIT_AMOUNT * 9) / 10, 0);
+        assert!(
+            escrow::get_amount(escrow1) == (ASSET_AMOUNT * 9) / 10,
+            0
+        );
+        assert!(
+            escrow::get_safety_deposit_amount(escrow1)
+                == (SAFETY_DEPOSIT_AMOUNT * 9) / 10,
+            0
+        );
 
         // Fill remaining segment 9 (completes the order)
         let escrow2 = escrow::deploy_source(&resolver_1, fusion_order, option::some(9));
@@ -475,9 +542,12 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Verify second escrow properties (remaining amount)
         let remaining_amount = ASSET_AMOUNT - ((ASSET_AMOUNT * 9) / 10);
-        let remaining_safety_deposit = SAFETY_DEPOSIT_AMOUNT - ((SAFETY_DEPOSIT_AMOUNT * 9) / 10);
+        let remaining_safety_deposit =
+            SAFETY_DEPOSIT_AMOUNT - ((SAFETY_DEPOSIT_AMOUNT * 9) / 10);
         assert!(escrow::get_amount(escrow2) == remaining_amount, 0);
-        assert!(escrow::get_safety_deposit_amount(escrow2) == remaining_safety_deposit, 0);
+        assert!(
+            escrow::get_safety_deposit_amount(escrow2) == remaining_safety_deposit, 0
+        );
 
         // Verify both escrows exist
         assert!(object::object_exists<Escrow>(escrow1_address) == true, 0);
@@ -493,22 +563,24 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Create a fusion order with single hash (no partial fills allowed)
         let hashes = create_test_hashes(1);
-        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
-        let auto_cancel_after = option::none<u64>();
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
 
-        let fusion_order = fusion_order::new(
-            &owner,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            ASSET_AMOUNT,
-            resolver_whitelist,
-            SAFETY_DEPOSIT_AMOUNT,
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION,
-            auto_cancel_after
-        );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
 
         let fusion_order_address = object::object_address(&fusion_order);
 
@@ -536,12 +608,14 @@ module fusion_plus::escrow_source_chain_tests {
         assert!(escrow::is_source_chain(escrow) == true, 0);
 
         // Verify assets are in escrow
-        let escrow_main_balance = primary_fungible_store::balance(escrow_address, metadata);
+        let escrow_main_balance =
+            primary_fungible_store::balance(escrow_address, metadata);
         assert!(escrow_main_balance == ASSET_AMOUNT, 0);
 
-        let escrow_safety_deposit_balance = primary_fungible_store::balance(
-            escrow_address, object::address_to_object<Metadata>(@0xa)
-        );
+        let escrow_safety_deposit_balance =
+            primary_fungible_store::balance(
+                escrow_address, object::address_to_object<Metadata>(@0xa)
+            );
         assert!(escrow_safety_deposit_balance == SAFETY_DEPOSIT_AMOUNT, 0);
     }
 
@@ -551,22 +625,24 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Create a fusion order with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
-        let auto_cancel_after = option::none<u64>();
+        let resolver_whitelist =
+            create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auto_cancel_after = option::none();
 
-        let fusion_order = fusion_order::new(
-            &owner,
-            ORDER_HASH,
-            hashes,
-            metadata,
-            ASSET_AMOUNT,
-            resolver_whitelist,
-            SAFETY_DEPOSIT_AMOUNT,
-            FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
-            PRIVATE_CANCELLATION_DURATION,
-            auto_cancel_after
-        );
+        let fusion_order =
+            fusion_order::new(
+                &owner,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                ASSET_AMOUNT,
+                resolver_whitelist,
+                SAFETY_DEPOSIT_AMOUNT,
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION,
+                auto_cancel_after
+            );
 
         // Create escrow with partial fill (segment 2)
         let escrow = escrow::deploy_source(&resolver_1, fusion_order, option::some(2));
@@ -579,10 +655,13 @@ module fusion_plus::escrow_source_chain_tests {
         );
 
         // Record initial balances
-        let initial_resolver_balance = primary_fungible_store::balance(signer::address_of(&resolver_1), metadata);
-        let initial_resolver_safety_deposit_balance = primary_fungible_store::balance(
-            signer::address_of(&resolver_1), object::address_to_object<Metadata>(@0xa)
-        );
+        let initial_resolver_balance =
+            primary_fungible_store::balance(signer::address_of(&resolver_1), metadata);
+        let initial_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(
+                signer::address_of(&resolver_1),
+                object::address_to_object<Metadata>(@0xa)
+            );
 
         // Withdraw using the secret for segment 2
         let secret_2 = vector::empty<u8>();
@@ -591,14 +670,24 @@ module fusion_plus::escrow_source_chain_tests {
         escrow::withdraw(&resolver_1, escrow, secret_2);
 
         // Verify resolver received the assets
-        let final_resolver_balance = primary_fungible_store::balance(signer::address_of(&resolver_1), metadata);
-        assert!(final_resolver_balance == initial_resolver_balance + (ASSET_AMOUNT * 3) / 10, 0);
+        let final_resolver_balance =
+            primary_fungible_store::balance(signer::address_of(&resolver_1), metadata);
+        assert!(
+            final_resolver_balance == initial_resolver_balance + (ASSET_AMOUNT * 3) / 10,
+            0
+        );
 
         // Verify resolver received safety deposit back
-        let final_resolver_safety_deposit_balance = primary_fungible_store::balance(
-            signer::address_of(&resolver_1), object::address_to_object<Metadata>(@0xa)
+        let final_resolver_safety_deposit_balance =
+            primary_fungible_store::balance(
+                signer::address_of(&resolver_1),
+                object::address_to_object<Metadata>(@0xa)
+            );
+        assert!(
+            final_resolver_safety_deposit_balance
+                == initial_resolver_safety_deposit_balance
+                    + (SAFETY_DEPOSIT_AMOUNT * 3) / 10,
+            0
         );
-        assert!(final_resolver_safety_deposit_balance == initial_resolver_safety_deposit_balance + (SAFETY_DEPOSIT_AMOUNT * 3) / 10, 0);
     }
-
 }

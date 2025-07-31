@@ -38,8 +38,7 @@ module fusion_plus::router {
 
     /// Entry function for cancelling a Dutch auction.
     public entry fun cancel_auction(
-        signer: &signer,
-        auction: Object<DutchAuction>
+        signer: &signer, auction: Object<DutchAuction>
     ) {
         dutch_auction::cancel_auction(signer, auction);
     }
@@ -96,7 +95,6 @@ module fusion_plus::router {
         escrow::deploy_source(resolver, fusion_order, option::some(segment));
     }
 
-
     public entry fun deploy_destination_single_fill(
         resolver: &signer,
         auction: Object<DutchAuction>,
@@ -131,5 +129,4 @@ module fusion_plus::router {
             private_cancellation_duration
         );
     }
-
 }
