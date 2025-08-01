@@ -1,19 +1,6 @@
 module fusion_plus::timelock {
     use aptos_framework::timestamp;
 
-    /// Error codes
-    const EINVALID_DURATION: u64 = 1;
-    const EOVERFLOW: u64 = 2;
-
-    /// Boundaries for the timelock in seconds.
-    // NOTE: The minimum values are set to be very short for testing purposes.
-    const MIN_FINALITY_DURATION: u64 = 1; // 1 second
-    const MAX_FINALITY_DURATION: u64 = 60 * 60 * 24; // 1 day
-    const MIN_EXCLUSIVE_DURATION: u64 = 1; // 1 second
-    const MAX_EXCLUSIVE_DURATION: u64 = 60 * 60 * 24 * 30; // 30 days
-    const MIN_PRIVATE_CANCELLATION_DURATION: u64 = 1; // 1 second
-    const MAX_PRIVATE_CANCELLATION_DURATION: u64 = 60 * 60 * 24 * 30; // 30 days
-
     /// Phase constants
     const PHASE_FINALITY: u8 = 0;
     const PHASE_EXCLUSIVE: u8 = 1;
@@ -60,25 +47,9 @@ module fusion_plus::timelock {
     /// @param finality_duration Duration of finality phase in seconds.
     /// @param exclusive_duration Duration of exclusive phase in seconds.
     /// @param private_cancellation_duration Duration of private cancellation phase in seconds.
-    ///
-    /// @reverts EINVALID_DURATION if any duration is zero or outside valid range.
-    /// @reverts EOVERFLOW if duration calculations would overflow.
     public fun new_internal(
         finality_duration: u64, exclusive_duration: u64, private_cancellation_duration: u64
     ): Timelock {
-        // Validate each phase duration individually
-        assert!(finality_duration >= MIN_FINALITY_DURATION, EINVALID_DURATION);
-        assert!(finality_duration <= MAX_FINALITY_DURATION, EINVALID_DURATION);
-        assert!(exclusive_duration >= MIN_EXCLUSIVE_DURATION, EINVALID_DURATION);
-        assert!(exclusive_duration <= MAX_EXCLUSIVE_DURATION, EINVALID_DURATION);
-        assert!(
-            private_cancellation_duration >= MIN_PRIVATE_CANCELLATION_DURATION,
-            EINVALID_DURATION
-        );
-        assert!(
-            private_cancellation_duration <= MAX_PRIVATE_CANCELLATION_DURATION,
-            EINVALID_DURATION
-        );
 
         Timelock {
             created_at: timestamp::now_seconds(),
@@ -223,30 +194,6 @@ module fusion_plus::timelock {
         )
     }
 
-    /// Checks if a finality duration is within valid bounds.
-    ///
-    /// @param duration The duration to check in seconds.
-    /// @return bool True if duration is valid, false otherwise.
-    public fun is_finality_duration_valid(duration: u64): bool {
-        duration >= MIN_FINALITY_DURATION && duration <= MAX_FINALITY_DURATION
-    }
-
-    /// Checks if an exclusive duration is within valid bounds.
-    ///
-    /// @param duration The duration to check in seconds.
-    /// @return bool True if duration is valid, false otherwise.
-    public fun is_exclusive_duration_valid(duration: u64): bool {
-        duration >= MIN_EXCLUSIVE_DURATION && duration <= MAX_EXCLUSIVE_DURATION
-    }
-
-    /// Checks if a cancellation duration is within valid bounds.
-    ///
-    /// @param duration The duration to check in seconds.
-    /// @return bool True if duration is valid, false otherwise.
-    public fun is_private_cancellation_duration_valid(duration: u64): bool {
-        duration >= MIN_PRIVATE_CANCELLATION_DURATION
-            && duration <= MAX_PRIVATE_CANCELLATION_DURATION
-    }
 
     #[test_only]
     public fun get_phase_finality(): u8 {

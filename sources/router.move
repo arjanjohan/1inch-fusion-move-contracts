@@ -2,7 +2,7 @@ module fusion_plus::router {
     use fusion_plus::dutch_auction::{Self, DutchAuction};
     use fusion_plus::fusion_order::{Self, FusionOrder};
     use aptos_framework::fungible_asset::{Metadata};
-    use fusion_plus::escrow;
+    use fusion_plus::escrow::{Self, Escrow};
     use aptos_framework::object::{Object};
     use std::option::{Self, Option};
 
@@ -127,5 +127,17 @@ module fusion_plus::router {
             exclusive_duration,
             private_cancellation_duration
         );
+    }
+
+    public entry fun escrow_withdraw(
+        signer: &signer, escrow: Object<Escrow>, secret: vector<u8>
+    ) {
+        escrow::withdraw(signer, escrow, secret);
+    }
+
+    public entry fun escrow_recovery(
+        signer: &signer, escrow: Object<Escrow>
+    ) {
+        escrow::recovery(signer, escrow);
     }
 }

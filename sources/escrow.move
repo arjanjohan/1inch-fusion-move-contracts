@@ -316,7 +316,7 @@ module fusion_plus::escrow {
     /// @reverts EINVALID_CALLER if the signer is not the resolver.
     /// @reverts EINVALID_PHASE if not in exclusive phase.
     /// @reverts EINVALID_SECRET if the secret does not match the hashlock.
-    public entry fun withdraw(
+    public fun withdraw(
         signer: &signer, escrow: Object<Escrow>, secret: vector<u8>
     ) acquires Escrow, EscrowController {
         let signer_address = signer::address_of(signer);
@@ -382,7 +382,7 @@ module fusion_plus::escrow {
     /// @reverts EOBJECT_DOES_NOT_EXIST if the escrow does not exist.
     /// @reverts EINVALID_CALLER if the signer is not the resolver during private cancellation.
     /// @reverts EINVALID_PHASE if not in cancellation phase.
-    public entry fun recovery(
+    public fun recovery(
         signer: &signer, escrow: Object<Escrow>
     ) acquires Escrow, EscrowController {
         let signer_address = signer::address_of(signer);

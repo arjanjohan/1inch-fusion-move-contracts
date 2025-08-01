@@ -151,7 +151,7 @@ module fusion_plus::dutch_auction {
         assert!(auction_start_time < auction_end_time, EINVALID_AUCTION_PARAMS);
         assert!(decay_duration > 0, EINVALID_AUCTION_PARAMS);
         assert!(
-            auction_end_time > auction_start_time + decay_duration,
+            auction_end_time >= auction_start_time + decay_duration,
             EINVALID_AUCTION_PARAMS
         );
 
