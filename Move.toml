@@ -4,19 +4,16 @@ version = "1.0.0"
 upgrade_policy = "compatible"
 
 [addresses]
-fusion_plus = "0x5f28002a709921a3bad09df582cdd99a7cab3ec300e99c88fbf50a354e62973b"
+fusion_plus = "0x0e6067afa8c1ca1b0cc486ec2a33ef65c3d8678b67ce9f1e4995fddae63cd25b"
 
 [dev-addresses]
 fusion_plus = "0x234"
 
 [dependencies]
-AptosFramework = { local = "/home/arjan/git/movement/aptos-core/aptos-move/framework/aptos-framework" }
-# AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "main" }
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "main" }
 
 [dev-dependencies]
-
-AptosFramework = { local = "/home/arjan/git/movement/aptos-core/aptos-move/framework/aptos-framework" }
-# AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "main" }
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "main" }
 
 [profile.default]
 # Enable all linters
