@@ -595,9 +595,11 @@ module fusion_plus::escrow {
         object::object_exists<Escrow>(object::object_address(&escrow))
     }
 
-    // - - - - INTERNAL FUNCTIONS - - - -
-
-    fun safety_deposit_metadata(): Object<Metadata> {
+    #[view]
+    /// Gets the safety deposit metadata.
+    ///
+    /// @return Object<Metadata> The safety deposit metadata.
+    public fun safety_deposit_metadata(): Object<Metadata> {
         object::address_to_object<Metadata>(@0xa)
     }
 
