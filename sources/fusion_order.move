@@ -188,7 +188,7 @@ module fusion_plus::fusion_order {
             );
         };
         for (i in 0..hashes_length) {
-            assert!(is_valid_hash(&hashes[i]), EINVALID_HASH);
+            assert!(is_valid_hash(vector::borrow(&hashes, i)), EINVALID_HASH);
         };
 
         // Create an object and FusionOrder
