@@ -1,6 +1,6 @@
 # Move United - Cross-Chain Atomic Swap Protocol
 
-![Logo](assets/logo_clean.png)
+![Logo](assets/new_logo.png)
 
 Move United is a comprehensive cross-chain swap protocol that enables secure asset transfers between any EVM and Aptos blockchain. The protocol uses a combination of hashlock/timelock mechanisms and Dutch auctions to ensure atomic cross-chain swaps. This is the Aptos implementation of the [1inch Fusion Plus](https://github.com/1inch/cross-chain-swap) protocol.
 
