@@ -94,17 +94,9 @@ module fusion_plus::escrow_destination_chain_tests {
         whitelist
     }
 
-    // - - - - DESTINATION CHAIN FLOW TESTS (ETH > APT) - - - -
-
-    #[test]
-    fun test_destination_chain_full_fill_single_hash() {
-        let (maker, _, _, resolver_1, _, _, metadata, _) = setup_test();
-
-        // Create a Dutch auction with single hash (no partial fills allowed)
-        let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
+    fun create_default_auction(maker: &signer, hashes: vector<vector<u8>>, metadata: Object<Metadata>, resolver_whitelist: vector<address>): Object<DutchAuction> {
+        dutch_auction::new(
+                maker,
                 ORDER_HASH,
                 hashes,
                 metadata,
@@ -113,8 +105,21 @@ module fusion_plus::escrow_destination_chain_tests {
                 AUCTION_START_TIME,
                 AUCTION_END_TIME,
                 DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+                SAFETY_DEPOSIT_AMOUNT,
+                resolver_whitelist
+            )
+    }
+
+    // - - - - DESTINATION CHAIN FLOW TESTS (ETH > APT) - - - -
+
+    #[test]
+    fun test_destination_chain_full_fill_single_hash() {
+        let (maker, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a Dutch auction with single hash (no partial fills allowed)
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         let auction_address = object::object_address(&auction);
 
@@ -170,19 +175,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         let auction_address = object::object_address(&auction);
 
@@ -238,19 +232,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         let auction_address = object::object_address(&auction);
 
@@ -315,19 +298,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         let auction_address = object::object_address(&auction);
 
@@ -395,19 +367,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         let auction_address = object::object_address(&auction);
 
@@ -483,19 +444,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         let auction_address = object::object_address(&auction);
 
@@ -569,19 +519,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         // Set time to auction start
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
@@ -643,19 +582,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with single hash
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         // Test price at start of auction
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
@@ -705,19 +633,9 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes for partial fills
         let hashes = create_test_hashes(11);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        vector::push_back(&mut resolver_whitelist, signer::address_of(&resolver_2));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         let auction_address = object::object_address(&auction);
 
@@ -793,19 +711,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         // Try to fill auction before it starts
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME - 100);
@@ -826,19 +733,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with single hash (no partial fills)
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -860,19 +756,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes
         let hashes = create_test_hashes(11);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -904,19 +789,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         // Try to cancel auction with wrong caller
         dutch_auction::cancel_auction(&resolver_1, auction);
@@ -929,19 +803,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -974,19 +837,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1015,19 +867,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1062,19 +903,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1138,19 +968,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1189,6 +1008,7 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with large amount
         let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
         let auction =
             dutch_auction::new(
                 &maker,
@@ -1200,7 +1020,8 @@ module fusion_plus::escrow_destination_chain_tests {
                 AUCTION_START_TIME,
                 AUCTION_END_TIME,
                 DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
+                SAFETY_DEPOSIT_AMOUNT,
+                resolver_whitelist
             );
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
@@ -1251,6 +1072,7 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Try to create auction with zero starting amount
         let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&maker));
         dutch_auction::new(
             &maker,
             ORDER_HASH,
@@ -1261,7 +1083,8 @@ module fusion_plus::escrow_destination_chain_tests {
             AUCTION_START_TIME,
             AUCTION_END_TIME,
             DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
+            SAFETY_DEPOSIT_AMOUNT,
+            resolver_whitelist
         );
     }
 
@@ -1272,6 +1095,7 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Try to create auction with start time after end time
         let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&maker));
         dutch_auction::new(
             &maker,
             ORDER_HASH,
@@ -1282,7 +1106,8 @@ module fusion_plus::escrow_destination_chain_tests {
             AUCTION_END_TIME, // Start after end
             AUCTION_START_TIME, // End before start
             DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
+            SAFETY_DEPOSIT_AMOUNT,
+            resolver_whitelist
         );
     }
 
@@ -1293,19 +1118,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         // Try to fill auction after it ends
         timestamp::update_global_time_for_test_secs(AUCTION_END_TIME + 100);
@@ -1326,6 +1140,7 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Try to create auction with empty hashes
         let hashes = vector::empty<vector<u8>>();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&maker));
         dutch_auction::new(
             &maker,
             ORDER_HASH,
@@ -1336,7 +1151,8 @@ module fusion_plus::escrow_destination_chain_tests {
             AUCTION_START_TIME,
             AUCTION_END_TIME,
             DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
+            SAFETY_DEPOSIT_AMOUNT,
+            resolver_whitelist
         );
     }
 
@@ -1347,6 +1163,7 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Try to create auction with zero safety deposit
         let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&maker));
         dutch_auction::new(
             &maker,
             ORDER_HASH,
@@ -1357,7 +1174,8 @@ module fusion_plus::escrow_destination_chain_tests {
             AUCTION_START_TIME,
             AUCTION_END_TIME,
             DECAY_DURATION,
-            0 // Invalid zero safety deposit
+            0, // Invalid zero safety deposit
+            resolver_whitelist
         );
     }
 
@@ -1367,19 +1185,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&maker));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         let auction_address = object::object_address(&auction);
 
@@ -1399,19 +1206,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         // Test price after decay period (should be ENDING_AMOUNT)
         timestamp::update_global_time_for_test_secs(
@@ -1442,19 +1238,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1483,19 +1268,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1532,19 +1306,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1626,19 +1389,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction
         let hashes = create_test_hashes(1);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1677,19 +1429,8 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with 5 hashes (segments 0-4)
         let hashes = create_test_hashes(5);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1711,19 +1452,9 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes
         let hashes = create_test_hashes(11);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        vector::push_back(&mut resolver_whitelist, signer::address_of(&resolver_2));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1755,19 +1486,9 @@ module fusion_plus::escrow_destination_chain_tests {
 
         // Create a Dutch auction with multiple hashes
         let hashes = create_test_hashes(11);
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        vector::push_back(&mut resolver_whitelist, signer::address_of(&resolver_2));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
 
         timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
 
@@ -1790,5 +1511,197 @@ module fusion_plus::escrow_destination_chain_tests {
             EXCLUSIVE_DURATION,
             PRIVATE_CANCELLATION_DURATION
         );
+    }
+
+    // - - - - RESOLVER WHITELIST TESTS - - - -
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_RESOLVER)]
+    fun test_destination_chain_resolver_not_in_whitelist() {
+        let (maker, _, _, resolver_1, resolver_2, _, metadata, _) = setup_test();
+
+        // Create a Dutch auction with only resolver_1 in whitelist
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
+
+        timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
+
+        // Try to fill auction with resolver_2 (not in whitelist) - should fail
+        escrow::deploy_destination(
+            &resolver_2,
+            auction,
+            option::none(),
+            FINALITY_DURATION,
+            EXCLUSIVE_DURATION,
+            PRIVATE_CANCELLATION_DURATION
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_RESOLVER)]
+    fun test_destination_chain_resolver_not_in_whitelist_partial_fill() {
+        let (maker, _, _, resolver_1, resolver_2, _, metadata, _) = setup_test();
+
+        // Create a Dutch auction with multiple hashes, only resolver_1 in whitelist
+        let hashes = create_test_hashes(11);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
+
+        timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
+
+        // Try to fill auction with resolver_2 (not in whitelist) - should fail
+        escrow::deploy_destination(
+            &resolver_2,
+            auction,
+            option::some(0),
+            FINALITY_DURATION,
+            EXCLUSIVE_DURATION,
+            PRIVATE_CANCELLATION_DURATION
+        );
+    }
+
+    #[test]
+    fun test_destination_chain_resolver_in_whitelist_success() {
+        let (maker, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a Dutch auction with resolver_1 in whitelist
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
+
+        timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
+
+        // Fill auction with resolver_1 (in whitelist) - should succeed
+        let escrow =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::none(),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
+
+        // Verify escrow was created successfully
+        let escrow_address = object::object_address(&escrow);
+        assert!(object::object_exists<Escrow>(escrow_address) == true, 0);
+        assert!(escrow::get_taker(escrow) == signer::address_of(&resolver_1), 0);
+    }
+
+    #[test]
+    fun test_destination_chain_multiple_resolvers_in_whitelist() {
+        let (maker, _, _, resolver_1, resolver_2, _, metadata, _) = setup_test();
+
+        // Create a Dutch auction with both resolvers in whitelist
+        let hashes = create_test_hashes(11);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_1));
+        vector::push_back(&mut resolver_whitelist, signer::address_of(&resolver_2));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
+
+        timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
+
+        // Both resolvers should be able to fill the auction
+        let escrow1 =
+            escrow::deploy_destination(
+                &resolver_1,
+                auction,
+                option::some(2),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
+
+        let escrow2 =
+            escrow::deploy_destination(
+                &resolver_2,
+                auction,
+                option::some(5),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
+
+        // Verify both escrows were created successfully
+        let escrow1_address = object::object_address(&escrow1);
+        let escrow2_address = object::object_address(&escrow2);
+        assert!(object::object_exists<Escrow>(escrow1_address) == true, 0);
+        assert!(object::object_exists<Escrow>(escrow2_address) == true, 0);
+        assert!(escrow::get_taker(escrow1) == signer::address_of(&resolver_1), 0);
+        assert!(escrow::get_taker(escrow2) == signer::address_of(&resolver_2), 0);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_RESOLVER_WHITELIST)]
+    fun test_destination_chain_empty_whitelist() {
+        let (maker, _, _, resolver_1, _, _, metadata, _) = setup_test();
+
+        // Create a Dutch auction with empty whitelist
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = vector::empty<address>();
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
+
+        timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
+
+        // Try to fill auction - should fail because whitelist is empty
+        escrow::deploy_destination(
+            &resolver_1,
+            auction,
+            option::none(),
+            FINALITY_DURATION,
+            EXCLUSIVE_DURATION,
+            PRIVATE_CANCELLATION_DURATION
+        );
+    }
+
+    #[test]
+    #[expected_failure(abort_code = dutch_auction::EINVALID_RESOLVER)]
+    fun test_destination_chain_whitelist_with_wrong_resolver() {
+        let (maker, _, _, resolver_1, resolver_2, _, metadata, _) = setup_test();
+
+        // Create a Dutch auction with resolver_2 in whitelist but try to fill with resolver_1
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_2));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
+
+        timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
+
+        // Try to fill auction with resolver_1 (not in whitelist) - should fail
+        escrow::deploy_destination(
+            &resolver_1,
+            auction,
+            option::none(),
+            FINALITY_DURATION,
+            EXCLUSIVE_DURATION,
+            PRIVATE_CANCELLATION_DURATION
+        );
+    }
+
+    #[test]
+    fun test_destination_chain_whitelist_with_correct_resolver() {
+        let (maker, _, _, resolver_1, resolver_2, _, metadata, _) = setup_test();
+
+        // Create a Dutch auction with resolver_2 in whitelist
+        let hashes = create_test_hashes(1);
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver_2));
+        let auction = create_default_auction(&maker, hashes, metadata, resolver_whitelist);
+
+        timestamp::update_global_time_for_test_secs(AUCTION_START_TIME);
+
+        // Fill auction with resolver_2 (in whitelist) - should succeed
+        let escrow =
+            escrow::deploy_destination(
+                &resolver_2,
+                auction,
+                option::none(),
+                FINALITY_DURATION,
+                EXCLUSIVE_DURATION,
+                PRIVATE_CANCELLATION_DURATION
+            );
+
+        // Verify escrow was created successfully
+        let escrow_address = object::object_address(&escrow);
+        assert!(object::object_exists<Escrow>(escrow_address) == true, 0);
+        assert!(escrow::get_taker(escrow) == signer::address_of(&resolver_2), 0);
     }
 }

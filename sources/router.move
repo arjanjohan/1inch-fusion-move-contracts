@@ -19,7 +19,8 @@ module fusion_plus::router {
         auction_start_time: u64,
         auction_end_time: u64,
         decay_duration: u64,
-        safety_deposit_amount: u64
+        safety_deposit_amount: u64,
+        resolver_whitelist: vector<address>
     ) {
         dutch_auction::new(
             signer,
@@ -31,7 +32,8 @@ module fusion_plus::router {
             auction_start_time,
             auction_end_time,
             decay_duration,
-            safety_deposit_amount
+            safety_deposit_amount,
+            resolver_whitelist
         );
     }
 

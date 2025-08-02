@@ -58,6 +58,27 @@ module fusion_plus::dutch_auction_tests {
         (account_1, account_2, resolver, metadata, mint_ref)
     }
 
+    fun setup_test_with_default_auction(): (signer, signer, Object<Metadata>, Object<DutchAuction>) {
+        let (maker, _, resolver, metadata, _) = setup_test();
+        let hashes = create_test_hashes();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
+        let auction =
+            dutch_auction::new(
+                &maker,
+                ORDER_HASH,
+                hashes,
+                metadata,
+                STARTING_AMOUNT,
+                ENDING_AMOUNT,
+                AUCTION_START_TIME,
+                AUCTION_END_TIME,
+                DECAY_DURATION,
+                SAFETY_DEPOSIT_AMOUNT,
+                resolver_whitelist
+            );
+        (maker, resolver, metadata, auction)
+    }
+
     fun create_test_hashes(): vector<vector<u8>> {
         let hashes = vector::empty<vector<u8>>();
         vector::push_back(&mut hashes, aptos_hash::keccak256(TEST_SECRET_0));
@@ -74,28 +95,17 @@ module fusion_plus::dutch_auction_tests {
         hashes
     }
 
+    fun create_resolver_whitelist(resolver: address): vector<address> {
+        let whitelist = vector::empty<address>();
+        vector::push_back(&mut whitelist, resolver);
+        whitelist
+    }
+
     // - - - - HAPPY FLOW TESTS - - - -
 
     #[test]
     fun test_create_dutch_auction() {
-        let (maker, _, _, metadata, _) = setup_test();
-
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (maker, _, metadata, auction) = setup_test_with_default_auction();
         // Verify initial state
         assert!(dutch_auction::get_maker(auction) == signer::address_of(&maker), 0);
         assert!(dutch_auction::get_metadata(auction) == metadata, 0);
@@ -131,10 +141,11 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_create_dutch_auction_single_segment() {
-        let (maker, _, _, metadata, _) = setup_test();
+        let (maker, _, resolver, metadata, _) = setup_test();
 
         let hashes = vector::empty<vector<u8>>();
         vector::push_back(&mut hashes, aptos_hash::keccak256(TEST_SECRET_0));
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         let auction =
             dutch_auction::new(
@@ -147,7 +158,8 @@ module fusion_plus::dutch_auction_tests {
                 AUCTION_START_TIME,
                 AUCTION_END_TIME,
                 DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
+                SAFETY_DEPOSIT_AMOUNT,
+                resolver_whitelist
             );
 
         // Verify single segment behavior
@@ -158,22 +170,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_get_current_amount_before_start() {
-        let (maker, _, _, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let (_, _, _, auction) = setup_test_with_default_auction();
 
         // Set time before auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME - 100);
@@ -184,23 +181,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_get_current_amount_during_decay() {
-        let (maker, _, _, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, _, _, auction) = setup_test_with_default_auction();
         // Set time during decay period (50% through decay)
         timestamp::fast_forward_seconds(AUCTION_START_TIME + DECAY_DURATION / 2);
 
@@ -211,23 +192,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_get_current_amount_after_decay() {
-        let (maker, _, _, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, _, _, auction) = setup_test_with_default_auction();
         // Set time after decay period but before auction end
         timestamp::fast_forward_seconds(AUCTION_START_TIME + DECAY_DURATION + 100);
 
@@ -240,6 +205,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = vector::empty<vector<u8>>();
         vector::push_back(&mut hashes, aptos_hash::keccak256(TEST_SECRET_0));
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         let auction =
             dutch_auction::new(
@@ -252,7 +218,8 @@ module fusion_plus::dutch_auction_tests {
                 AUCTION_START_TIME,
                 AUCTION_END_TIME,
                 DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
+                SAFETY_DEPOSIT_AMOUNT,
+                resolver_whitelist
             );
 
         // Set time after auction starts
@@ -278,6 +245,7 @@ module fusion_plus::dutch_auction_tests {
         let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = vector::empty<vector<u8>>();
         vector::push_back(&mut hashes, aptos_hash::keccak256(TEST_SECRET_0));
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         let auction =
             dutch_auction::new(
@@ -290,7 +258,8 @@ module fusion_plus::dutch_auction_tests {
                 AUCTION_START_TIME,
                 AUCTION_END_TIME,
                 DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
+                SAFETY_DEPOSIT_AMOUNT,
+                resolver_whitelist
             );
 
         // Set time after auction starts
@@ -313,22 +282,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_fill_auction_multiple_hash_full_fill_none() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
 
         // Set time at auction start
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
@@ -353,22 +307,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_fill_auction_multiple_hash_full_fill_last_segment() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
 
         // Set time after auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
@@ -393,22 +332,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_fill_auction_partial_fill() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
 
         // Set time after auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
@@ -439,22 +363,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_fill_auction_multiple_partial_fills() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
 
         // Set time after auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
@@ -510,23 +419,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_cancel_auction() {
-        let (maker, _, _, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (maker, _, _, auction) = setup_test_with_default_auction();
         let auction_address = object::object_address(&auction);
 
         // Verify auction exists before cancellation
@@ -543,22 +436,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_verify_secret_for_segment() {
-        let (maker, _, _, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
+        let (maker, _, _, auction) = setup_test_with_default_auction();
 
         // Test secret verification for different segments
         assert!(
@@ -590,23 +468,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_get_segment_hash() {
-        let (maker, _, _, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (maker, _, _, auction) = setup_test_with_default_auction();
         // Test getting hashes for different segments
         let hash_0 = dutch_auction::get_segment_hash(auction, 0);
         let hash_5 = dutch_auction::get_segment_hash(auction, 5);
@@ -623,23 +485,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_auction_utility_functions() {
-        let (maker, _, _, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (maker, _, _, auction) = setup_test_with_default_auction();
         // Test auction_exists
         assert!(dutch_auction::auction_exists(auction), 0);
 
@@ -670,8 +516,9 @@ module fusion_plus::dutch_auction_tests {
     #[test]
     #[expected_failure(abort_code = dutch_auction::EINVALID_AUCTION_PARAMS)]
     fun test_create_auction_invalid_params_starting_less_than_ending() {
-        let (maker, _, _, metadata, _) = setup_test();
+        let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         dutch_auction::new(
             &maker,
@@ -683,15 +530,17 @@ module fusion_plus::dutch_auction_tests {
             AUCTION_START_TIME,
             AUCTION_END_TIME,
             DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
+            SAFETY_DEPOSIT_AMOUNT,
+            resolver_whitelist
         );
     }
 
     #[test]
     #[expected_failure(abort_code = dutch_auction::EINVALID_AUCTION_PARAMS)]
     fun test_create_auction_invalid_params_zero_decay_duration() {
-        let (maker, _, _, metadata, _) = setup_test();
+        let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         dutch_auction::new(
             &maker,
@@ -703,15 +552,17 @@ module fusion_plus::dutch_auction_tests {
             AUCTION_START_TIME,
             AUCTION_END_TIME,
             0, // Zero decay duration
-            SAFETY_DEPOSIT_AMOUNT
+            SAFETY_DEPOSIT_AMOUNT,
+            resolver_whitelist
         );
     }
 
     #[test]
     #[expected_failure(abort_code = dutch_auction::EINVALID_AUCTION_PARAMS)]
     fun test_create_auction_invalid_params_end_time_before_decay_complete() {
-        let (maker, _, _, metadata, _) = setup_test();
+        let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         dutch_auction::new(
             &maker,
@@ -723,15 +574,17 @@ module fusion_plus::dutch_auction_tests {
             AUCTION_START_TIME,
             AUCTION_START_TIME + DECAY_DURATION - 100, // End time before decay completes
             DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
+            SAFETY_DEPOSIT_AMOUNT,
+            resolver_whitelist
         );
     }
 
     #[test]
     #[expected_failure(abort_code = dutch_auction::EINVALID_AUCTION_PARAMS)]
     fun test_create_auction_invalid_params_zero_starting_amount() {
-        let (maker, _, _, metadata, _) = setup_test();
+        let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         dutch_auction::new(
             &maker,
@@ -743,15 +596,17 @@ module fusion_plus::dutch_auction_tests {
             AUCTION_START_TIME,
             AUCTION_END_TIME,
             DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
+            SAFETY_DEPOSIT_AMOUNT,
+            resolver_whitelist
         );
     }
 
     #[test]
     #[expected_failure(abort_code = dutch_auction::EINVALID_SAFETY_DEPOSIT_AMOUNT)]
     fun test_create_auction_invalid_params_zero_safety_deposit() {
-        let (maker, _, _, metadata, _) = setup_test();
+        let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         dutch_auction::new(
             &maker,
@@ -763,15 +618,17 @@ module fusion_plus::dutch_auction_tests {
             AUCTION_START_TIME,
             AUCTION_END_TIME,
             DECAY_DURATION,
-            0 // Zero safety deposit
+            0, // Zero safety deposit
+            resolver_whitelist
         );
     }
 
     #[test]
     #[expected_failure(abort_code = dutch_auction::EINVALID_SAFETY_DEPOSIT_AMOUNT)]
     fun test_create_auction_invalid_params_safety_deposit_not_divisible() {
-        let (maker, _, _, metadata, _) = setup_test();
+        let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         dutch_auction::new(
             &maker,
@@ -783,15 +640,17 @@ module fusion_plus::dutch_auction_tests {
             AUCTION_START_TIME,
             AUCTION_END_TIME,
             DECAY_DURATION,
-            101 // Not divisible by 10 (num_hashes - 1)
+            101, // Not divisible by 10 (num_hashes - 1)
+            resolver_whitelist
         );
     }
 
     #[test]
     #[expected_failure(abort_code = dutch_auction::EINVALID_HASHES)]
     fun test_create_auction_invalid_params_empty_hashes() {
-        let (maker, _, _, metadata, _) = setup_test();
+        let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = vector::empty<vector<u8>>();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         dutch_auction::new(
             &maker,
@@ -803,30 +662,15 @@ module fusion_plus::dutch_auction_tests {
             AUCTION_START_TIME,
             AUCTION_END_TIME,
             DECAY_DURATION,
-            SAFETY_DEPOSIT_AMOUNT
+            SAFETY_DEPOSIT_AMOUNT,
+            resolver_whitelist
         );
     }
 
     #[test]
     #[expected_failure(abort_code = dutch_auction::EAUCTION_NOT_STARTED)]
     fun test_fill_auction_before_start() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time before auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME - 100);
 
@@ -839,23 +683,7 @@ module fusion_plus::dutch_auction_tests {
     #[test]
     #[expected_failure(abort_code = dutch_auction::EOBJECT_DOES_NOT_EXIST)]
     fun test_fill_auction_already_filled() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time after auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
 
@@ -875,23 +703,7 @@ module fusion_plus::dutch_auction_tests {
     #[test]
     #[expected_failure(abort_code = dutch_auction::EINVALID_SEGMENT)]
     fun test_fill_auction_invalid_segment() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time after auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
 
@@ -905,23 +717,7 @@ module fusion_plus::dutch_auction_tests {
     #[test]
     #[expected_failure(abort_code = dutch_auction::ESEGMENT_ALREADY_FILLED)]
     fun test_fill_auction_segment_already_filled() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time after auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
 
@@ -941,23 +737,7 @@ module fusion_plus::dutch_auction_tests {
     #[test]
     #[expected_failure(abort_code = dutch_auction::ESEGMENT_ALREADY_FILLED)]
     fun test_fill_auction_out_of_order() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time after auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
 
@@ -979,6 +759,7 @@ module fusion_plus::dutch_auction_tests {
     fun test_cancel_auction_wrong_caller() {
         let (maker, wrong_caller, _, metadata, _) = setup_test();
         let hashes = create_test_hashes();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&maker));
 
         let auction =
             dutch_auction::new(
@@ -991,7 +772,8 @@ module fusion_plus::dutch_auction_tests {
                 AUCTION_START_TIME,
                 AUCTION_END_TIME,
                 DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
+                SAFETY_DEPOSIT_AMOUNT,
+                resolver_whitelist
             );
 
         // Try to cancel with wrong caller
@@ -1002,23 +784,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_fill_auction_complete_with_partial_fills() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time after auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
 
@@ -1074,6 +840,7 @@ module fusion_plus::dutch_auction_tests {
         common::mint_fa(&mint_ref, large_amount, signer::address_of(&resolver));
 
         let hashes = create_test_hashes();
+        let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
 
         let auction =
             dutch_auction::new(
@@ -1086,7 +853,8 @@ module fusion_plus::dutch_auction_tests {
                 AUCTION_START_TIME,
                 AUCTION_END_TIME,
                 DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
+                SAFETY_DEPOSIT_AMOUNT,
+                resolver_whitelist
             );
 
         // Set time after auction starts
@@ -1112,23 +880,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_fill_auction_during_decay() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time during decay (50% through)
         timestamp::fast_forward_seconds(AUCTION_START_TIME + DECAY_DURATION / 2);
 
@@ -1150,23 +902,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_fill_auction_after_decay() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time after decay period
         timestamp::fast_forward_seconds(AUCTION_END_TIME);
 
@@ -1187,23 +923,7 @@ module fusion_plus::dutch_auction_tests {
 
     #[test]
     fun test_fill_auction_remaining_segments() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
-
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time after auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
 
@@ -1262,23 +982,8 @@ module fusion_plus::dutch_auction_tests {
     #[test]
     #[expected_failure(abort_code = dutch_auction::EINVALID_SEGMENT)]
     fun test_fill_auction_hash_10_with_partial_fills() {
-        let (maker, _, resolver, metadata, _) = setup_test();
-        let hashes = create_test_hashes();
 
-        let auction =
-            dutch_auction::new(
-                &maker,
-                ORDER_HASH,
-                hashes,
-                metadata,
-                STARTING_AMOUNT,
-                ENDING_AMOUNT,
-                AUCTION_START_TIME,
-                AUCTION_END_TIME,
-                DECAY_DURATION,
-                SAFETY_DEPOSIT_AMOUNT
-            );
-
+        let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time after auction starts
         timestamp::fast_forward_seconds(AUCTION_START_TIME);
 
