@@ -27,7 +27,8 @@ module fusion_plus::escrow_source_chain_tests {
     // Test order parameters
     const ORDER_HASH: vector<u8> = b"order_hash_123";
     const FINALITY_DURATION: u64 = 3600; // 1 hour
-    const EXCLUSIVE_DURATION: u64 = 1800; // 30 minutes
+    const EXCLUSIVE_WITHDRAWAL_DURATION: u64 = 1800; // 30 minutes
+    const PUBLIC_WITHDRAWAL_DURATION: u64 = 900; // 15 minutes
     const PRIVATE_CANCELLATION_DURATION: u64 = 900; // 15 minutes
 
     fun setup_test():
@@ -107,7 +108,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -137,7 +139,8 @@ module fusion_plus::escrow_source_chain_tests {
         assert!(escrow::get_taker(escrow) == signer::address_of(&resolver_1), 0);
         assert!(escrow::get_hash(escrow) == *vector::borrow(&hashes, 0), 0);
         assert!(escrow::get_finality_duration(escrow) == FINALITY_DURATION, 0);
-        assert!(escrow::get_exclusive_duration(escrow) == EXCLUSIVE_DURATION, 0);
+        assert!(escrow::get_exclusive_withdrawal_duration(escrow) == EXCLUSIVE_WITHDRAWAL_DURATION, 0);
+        assert!(escrow::get_public_withdrawal_duration(escrow) == PUBLIC_WITHDRAWAL_DURATION, 0);
         assert!(
             escrow::get_private_cancellation_duration(escrow)
                 == PRIVATE_CANCELLATION_DURATION,
@@ -178,7 +181,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -194,7 +198,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -244,7 +249,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -306,7 +312,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -377,7 +384,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -448,7 +456,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -513,7 +522,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -576,7 +586,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -638,7 +649,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -648,7 +660,7 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to exclusive phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, _, _) = timelock::get_durations(&timelock);
+        let (finality_duration, _, _, _) = timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration + 1
         );
@@ -713,7 +725,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -743,7 +756,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -773,7 +787,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -803,7 +818,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -836,7 +852,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -872,7 +889,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -882,11 +900,11 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to private cancellation phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, exclusive_duration, _) =
+        let (finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, _) =
             timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration
-                + exclusive_duration + 1
+                + exclusive_withdrawal_duration + public_withdrawal_duration + 1
         );
 
         // Try to withdraw during private cancellation phase (should fail)
@@ -917,7 +935,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -927,7 +946,7 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to exclusive phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, _, _) = timelock::get_durations(&timelock);
+        let (finality_duration, _, _, _) = timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration + 1
         );
@@ -957,7 +976,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -967,7 +987,7 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to exclusive phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, _, _) = timelock::get_durations(&timelock);
+        let (finality_duration, _, _, _) = timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration + 1
         );
@@ -1008,7 +1028,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1018,11 +1039,11 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to private cancellation phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, exclusive_duration, _) =
+        let (finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, _) =
             timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration
-                + exclusive_duration + 1
+                + exclusive_withdrawal_duration + public_withdrawal_duration + 1
         );
 
         // Recover escrow (only resolver can do this in private cancellation)
@@ -1067,7 +1088,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1077,11 +1099,11 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to private cancellation phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, exclusive_duration, _) =
+        let (finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, _) =
             timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration
-                + exclusive_duration + 1
+                + exclusive_withdrawal_duration + public_withdrawal_duration + 1
         );
 
         // Try to recover with wrong caller (only resolver can do this in private cancellation)
@@ -1111,7 +1133,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1133,11 +1156,11 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to public cancellation phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, exclusive_duration, private_cancellation_duration) =
+        let (finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, private_cancellation_duration) =
             timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration
-                + exclusive_duration + private_cancellation_duration + 1
+                + exclusive_withdrawal_duration + public_withdrawal_duration + private_cancellation_duration + 1
         );
 
         // Anyone can recover during public cancellation phase
@@ -1196,7 +1219,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1206,7 +1230,7 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to exclusive phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, _, _) = timelock::get_durations(&timelock);
+        let (finality_duration, _, _, _) = timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration + 1
         );
@@ -1241,7 +1265,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1297,7 +1322,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1307,7 +1333,7 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to exclusive phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, _, _) = timelock::get_durations(&timelock);
+        let (finality_duration, _, _, _) = timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration + 1
         );
@@ -1351,7 +1377,8 @@ module fusion_plus::escrow_source_chain_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );

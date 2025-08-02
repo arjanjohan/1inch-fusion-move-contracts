@@ -108,7 +108,8 @@ module fusion_plus::fusion_order {
     /// @param amount The amount of the asset being swapped.
     /// @param safety_deposit_amount The amount of safety deposit required.
     /// @param finality_duration The finality duration for the order.
-    /// @param exclusive_duration The exclusive duration for the order.
+    /// @param exclusive_withdrawal_duration The exclusive withdrawal duration for the order.
+    /// @param public_withdrawal_duration The public withdrawal duration for the order.
     /// @param private_cancellation_duration The private cancellation duration for the order.
     /// @param partial_fill_allowed Whether partial fills are allowed.
     /// @param max_segments Maximum number of segments for partial fills.
@@ -125,7 +126,8 @@ module fusion_plus::fusion_order {
         safety_deposit_amount: u64,
         resolver_whitelist: vector<address>,
         finality_duration: u64,
-        exclusive_duration: u64,
+        exclusive_withdrawal_duration: u64,
+        public_withdrawal_duration: u64,
         private_cancellation_duration: u64,
         last_filled_segment: Option<u64>,
         allow_resolver_to_cancel_after_timestamp: Option<u64>
@@ -159,7 +161,8 @@ module fusion_plus::fusion_order {
         resolver_whitelist: vector<address>,
         safety_deposit_amount: u64,
         finality_duration: u64,
-        exclusive_duration: u64,
+        exclusive_withdrawal_duration: u64,
+        public_withdrawal_duration: u64,
         private_cancellation_duration: u64,
         auto_cancel_after: Option<u64>
     ): Object<FusionOrder> {
@@ -208,7 +211,8 @@ module fusion_plus::fusion_order {
             safety_deposit_amount,
             resolver_whitelist,
             finality_duration,
-            exclusive_duration,
+            exclusive_withdrawal_duration,
+            public_withdrawal_duration,
             private_cancellation_duration,
             last_filled_segment: option::none(),
             allow_resolver_to_cancel_after_timestamp: auto_cancel_after
@@ -583,9 +587,18 @@ module fusion_plus::fusion_order {
     ///
     /// @param fusion_order The fusion order to get the exclusive duration from.
     /// @return u64 The exclusive duration.
-    public fun get_exclusive_duration(fusion_order: Object<FusionOrder>): u64 acquires FusionOrder {
+    public fun get_exclusive_withdrawal_duration(fusion_order: Object<FusionOrder>): u64 acquires FusionOrder {
         let fusion_order_ref = borrow_fusion_order(&fusion_order);
-        fusion_order_ref.exclusive_duration
+        fusion_order_ref.exclusive_withdrawal_duration
+    }
+
+    /// Gets the public withdrawal duration of a fusion order.
+    ///
+    /// @param fusion_order The fusion order to get the public withdrawal duration from.
+    /// @return u64 The public withdrawal duration.
+    public fun get_public_withdrawal_duration(fusion_order: Object<FusionOrder>): u64 acquires FusionOrder {
+        let fusion_order_ref = borrow_fusion_order(&fusion_order);
+        fusion_order_ref.public_withdrawal_duration
     }
 
     /// Gets the private cancellation duration of a fusion order.
