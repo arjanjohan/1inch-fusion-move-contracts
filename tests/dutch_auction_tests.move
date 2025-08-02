@@ -903,8 +903,8 @@ module fusion_plus::dutch_auction_tests {
     #[test]
     fun test_fill_auction_after_decay() {
         let (_, resolver, _, auction) = setup_test_with_default_auction();
-        // Set time after decay period
-        timestamp::fast_forward_seconds(AUCTION_END_TIME);
+        // Set time after decay period but just before end time
+        timestamp::fast_forward_seconds(AUCTION_END_TIME -1 );
 
         // Fill auction after decay
         let (asset, safety_deposit_asset) =
