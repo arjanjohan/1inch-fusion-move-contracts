@@ -176,6 +176,7 @@ module fusion_plus::fusion_order {
         );
         assert!(vector::length(&resolver_whitelist) > 0, EINVALID_RESOLVER_WHITELIST);
         let hashes_length = vector::length(&hashes);
+
         // Partial fill checks
         if (hashes_length > 1) {
             assert!(
@@ -797,7 +798,7 @@ module fusion_plus::fusion_order {
         } else { false }
     }
 
-    // - - - - INTERNAL FUNCTIONS - - - -
+    // - - - - UTILITY FUNCTIONS - - - -
 
     fun safety_deposit_metadata(): Object<Metadata> {
         object::address_to_object<Metadata>(@0xa)

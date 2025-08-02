@@ -37,6 +37,10 @@ module fusion_plus::dutch_auction {
     const EINVALID_HASHES: u64 = 11;
     /// Invalid safety deposit amount
     const EINVALID_SAFETY_DEPOSIT_AMOUNT: u64 = 12;
+    /// Invalid resolver whitelist
+    const EINVALID_RESOLVER_WHITELIST: u64 = 13;
+    /// Invalid resolver
+    const EINVALID_RESOLVER: u64 = 14;
 
     // - - - - EVENTS - - - -
 
@@ -100,6 +104,7 @@ module fusion_plus::dutch_auction {
         metadata: Object<Metadata>,
         auction_params: AuctionParams,
         safety_deposit_amount: u64,
+        resolver_whitelist: vector<address>,
         last_filled_segment: Option<u64>,
         hashes: vector<vector<u8>>
     }
@@ -142,7 +147,8 @@ module fusion_plus::dutch_auction {
         auction_start_time: u64,
         auction_end_time: u64,
         decay_duration: u64,
-        safety_deposit_amount: u64
+        safety_deposit_amount: u64,
+        resolver_whitelist: vector<address>,
     ): Object<DutchAuction> {
         let signer_address = signer::address_of(signer);
 
@@ -176,6 +182,9 @@ module fusion_plus::dutch_auction {
             assert!(is_valid_hash(&hashes[i]), EINVALID_SECRET);
         };
 
+        // Validate resolver whitelist
+        assert!(vector::length(&resolver_whitelist) > 0, EINVALID_RESOLVER_WHITELIST);
+
         // Create the object and DutchAuction
         let constructor_ref = object::create_object_from_account(signer);
         let object_signer = object::generate_signer(&constructor_ref);
@@ -197,6 +206,7 @@ module fusion_plus::dutch_auction {
             metadata,
             auction_params,
             safety_deposit_amount,
+            resolver_whitelist,
             last_filled_segment: option::none(),
             hashes
         };
@@ -250,6 +260,7 @@ module fusion_plus::dutch_auction {
             metadata: _,
             auction_params: _,
             safety_deposit_amount: _,
+            resolver_whitelist: _,
             last_filled_segment: _,
             hashes: _
         } = move_from<DutchAuction>(auction_address);
@@ -316,6 +327,7 @@ module fusion_plus::dutch_auction {
         let current_time = timestamp::now_seconds();
 
         assert!(auction_exists(auction), EOBJECT_DOES_NOT_EXIST);
+        assert!(is_valid_resolver(auction, signer_address), EINVALID_RESOLVER);
 
         // Calculate full fill amount based on auction price
         let current_amount = get_current_amount(auction);
@@ -330,6 +342,9 @@ module fusion_plus::dutch_auction {
 
         // Check if auction has started
         assert!(current_time >= auction_params.auction_start_time, EAUCTION_NOT_STARTED);
+
+        // Check if auction has ended
+        assert!(current_time < auction_params.auction_end_time, EAUCTION_ENDED);
 
         let num_hashes = vector::length(&auction_ref.hashes);
         let segment_to_fill: u64;
@@ -681,6 +696,16 @@ module fusion_plus::dutch_auction {
         auction_ref.maker == addr
     }
 
+    // If resolver whitelist contains zero address, then any resolver can fill the order
+    fun is_valid_resolver(
+        auction: Object<DutchAuction>, resolver: address
+    ): bool acquires DutchAuction {
+        let auction_ref = borrow_dutch_auction(&auction);
+        vector::contains(&auction_ref.resolver_whitelist, &@0x0)
+            || vector::contains(&auction_ref.resolver_whitelist, &resolver)
+    }
+
+
     // - - - - BORROW FUNCTIONS - - - -
 
     /// Borrows an immutable reference to the DutchAuction.
@@ -731,7 +756,8 @@ module fusion_plus::dutch_auction {
             auction_params: _,
             safety_deposit_amount: _,
             last_filled_segment: _,
-            hashes: _
+            hashes: _,
+            resolver_whitelist: _
         } = move_from<DutchAuction>(auction_address);
     }
 }
