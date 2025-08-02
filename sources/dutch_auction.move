@@ -173,7 +173,7 @@ module fusion_plus::dutch_auction {
 
         // Validate hashes
         for (i in 0..num_hashes) {
-            assert!(is_valid_hash(&hashes[i]), EINVALID_SECRET);
+            assert!(is_valid_hash(vector::borrow(&hashes, i)), EINVALID_SECRET);
         };
 
         // Create the object and DutchAuction
