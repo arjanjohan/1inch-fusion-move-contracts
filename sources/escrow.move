@@ -145,7 +145,8 @@ module fusion_plus::escrow {
             true, // is_source_chain
             segment_hash,
             fusion_order::get_finality_duration(fusion_order),
-            fusion_order::get_exclusive_duration(fusion_order),
+            fusion_order::get_exclusive_withdrawal_duration(fusion_order),
+            fusion_order::get_public_withdrawal_duration(fusion_order),
             fusion_order::get_private_cancellation_duration(fusion_order)
         )
     }
@@ -159,7 +160,8 @@ module fusion_plus::escrow {
     /// @param segment The segment to fill (0-9 for partial fills, 10 for full fill).
     /// @param safety_deposit_amount The amount of safety deposit required.
     /// @param finality_duration The finality duration for the escrow.
-    /// @param exclusive_duration The exclusive duration for the escrow.
+    /// @param exclusive_withdrawal_duration The exclusive withdrawal duration for the escrow.
+    /// @param public_withdrawal_duration The public withdrawal duration for the escrow.
     /// @param private_cancellation_duration The private cancellation duration for the escrow.
     ///
     /// @reverts EINVALID_AMOUNT if auction price is zero.
@@ -172,7 +174,8 @@ module fusion_plus::escrow {
         auction: Object<DutchAuction>,
         segment: Option<u64>,
         finality_duration: u64,
-        exclusive_duration: u64,
+        exclusive_withdrawal_duration: u64,
+        public_withdrawal_duration: u64,
         private_cancellation_duration: u64
     ): Object<Escrow> {
 
@@ -210,7 +213,8 @@ module fusion_plus::escrow {
             false, // is_source_chain
             segment_hash, // Use the segment hash for this partial fill
             finality_duration,
-            exclusive_duration,
+            exclusive_withdrawal_duration,
+            public_withdrawal_duration,
             private_cancellation_duration
         )
     }
@@ -236,7 +240,8 @@ module fusion_plus::escrow {
         is_source_chain: bool,
         hash: vector<u8>,
         finality_duration: u64,
-        exclusive_duration: u64,
+        exclusive_withdrawal_duration: u64,
+        public_withdrawal_duration: u64,
         private_cancellation_duration: u64
     ): Object<Escrow> {
 
@@ -253,8 +258,8 @@ module fusion_plus::escrow {
         );
 
         let timelock =
-            timelock::new_from_durations(
-                finality_duration, exclusive_duration, private_cancellation_duration
+            timelock::new(
+                finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, private_cancellation_duration
             );
         let hashlock = hashlock::create_hashlock(hash);
 
@@ -324,10 +329,13 @@ module fusion_plus::escrow {
         assert!(escrow_exists(escrow), EOBJECT_DOES_NOT_EXIST);
 
         let escrow_ref = borrow_escrow_mut(&escrow);
-        assert!(escrow_ref.taker == signer_address, EINVALID_CALLER);
 
         let timelock = escrow_ref.timelock;
-        assert!(timelock::is_in_exclusive_phase(&timelock), EINVALID_PHASE);
+        if (timelock::is_in_exclusive_withdrawal_phase(&timelock)) {
+            assert!(escrow_ref.taker == signer_address, EINVALID_CALLER);
+        };
+
+        assert!(timelock::is_in_withdrawal_phase(&timelock), EINVALID_PHASE);
 
         // Verify the secret matches the hashlock
         assert!(
@@ -394,11 +402,9 @@ module fusion_plus::escrow {
 
         if (timelock::is_in_private_cancellation_phase(&timelock)) {
             assert!(escrow_ref.taker == signer_address, EINVALID_CALLER);
-        } else {
-            assert!(
-                timelock::is_in_public_cancellation_phase(&timelock), EINVALID_PHASE
-            );
         };
+
+        assert!(timelock::is_in_cancellation_phase(&timelock), EINVALID_PHASE);
 
         let escrow_address = object::object_address(&escrow);
         let EscrowController { extend_ref, delete_ref } = move_from(escrow_address);
@@ -555,9 +561,19 @@ module fusion_plus::escrow {
     ///
     /// @param escrow The escrow to get the exclusive duration from.
     /// @return u64 The exclusive duration.
-    public fun get_exclusive_duration(escrow: Object<Escrow>): u64 acquires Escrow {
+    public fun get_exclusive_withdrawal_duration(escrow: Object<Escrow>): u64 acquires Escrow {
         let escrow_ref = borrow_escrow(&escrow);
-        timelock::get_exclusive_duration(&escrow_ref.timelock)
+        timelock::get_exclusive_withdrawal_duration(&escrow_ref.timelock)
+    }
+
+    #[view]
+    /// Gets the public withdrawal duration of an escrow.
+    ///
+    /// @param escrow The escrow to get the public withdrawal duration from.
+    /// @return u64 The public withdrawal duration.
+    public fun get_public_withdrawal_duration(escrow: Object<Escrow>): u64 acquires Escrow {
+        let escrow_ref = borrow_escrow(&escrow);
+        timelock::get_public_withdrawal_duration(&escrow_ref.timelock)
     }
 
     #[view]

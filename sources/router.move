@@ -54,7 +54,8 @@ module fusion_plus::router {
         safety_deposit_amount: u64,
         resolver_whitelist: vector<address>,
         finality_duration: u64,
-        exclusive_duration: u64,
+        exclusive_withdrawal_duration: u64,
+        public_withdrawal_duration: u64,
         private_cancellation_duration: u64,
         auto_cancel_after: Option<u64>
     ) {
@@ -67,7 +68,8 @@ module fusion_plus::router {
             resolver_whitelist,
             safety_deposit_amount,
             finality_duration,
-            exclusive_duration,
+            exclusive_withdrawal_duration,
+            public_withdrawal_duration,
             private_cancellation_duration,
             auto_cancel_after
         );
@@ -98,7 +100,8 @@ module fusion_plus::router {
         resolver: &signer,
         auction: Object<DutchAuction>,
         finality_duration: u64,
-        exclusive_duration: u64,
+        exclusive_withdrawal_duration: u64,
+        public_withdrawal_duration: u64,
         private_cancellation_duration: u64
     ) {
         escrow::deploy_destination(
@@ -106,7 +109,8 @@ module fusion_plus::router {
             auction,
             option::none(),
             finality_duration,
-            exclusive_duration,
+            exclusive_withdrawal_duration,
+            public_withdrawal_duration,
             private_cancellation_duration
         );
     }
@@ -116,7 +120,8 @@ module fusion_plus::router {
         auction: Object<DutchAuction>,
         segment: u64,
         finality_duration: u64,
-        exclusive_duration: u64,
+        exclusive_withdrawal_duration: u64,
+        public_withdrawal_duration: u64,
         private_cancellation_duration: u64
     ) {
         escrow::deploy_destination(
@@ -124,7 +129,8 @@ module fusion_plus::router {
             auction,
             option::some(segment),
             finality_duration,
-            exclusive_duration,
+            exclusive_withdrawal_duration,
+            public_withdrawal_duration,
             private_cancellation_duration
         );
     }

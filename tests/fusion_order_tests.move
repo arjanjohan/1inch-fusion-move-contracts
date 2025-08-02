@@ -27,7 +27,8 @@ module fusion_plus::fusion_order_tests {
     // Test order parameters
     const ORDER_HASH: vector<u8> = b"order_hash_123";
     const FINALITY_DURATION: u64 = 3600; // 1 hour
-    const EXCLUSIVE_DURATION: u64 = 1800; // 30 minutes
+    const EXCLUSIVE_WITHDRAWAL_DURATION: u64 = 1800; // 30 minutes
+    const PUBLIC_WITHDRAWAL_DURATION: u64 = 900; // 15 minutes
     const PRIVATE_CANCELLATION_DURATION: u64 = 900; // 15 minutes
 
     fun setup_test(): (signer, signer, signer, Object<Metadata>, MintRef) {
@@ -88,7 +89,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -115,7 +117,7 @@ module fusion_plus::fusion_order_tests {
             fusion_order::get_finality_duration(fusion_order) == FINALITY_DURATION, 0
         );
         assert!(
-            fusion_order::get_exclusive_duration(fusion_order) == EXCLUSIVE_DURATION, 0
+            fusion_order::get_exclusive_withdrawal_duration(fusion_order) == EXCLUSIVE_WITHDRAWAL_DURATION, 0
         );
         assert!(
             fusion_order::get_private_cancellation_duration(fusion_order)
@@ -161,7 +163,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -224,7 +227,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -272,7 +276,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -319,7 +324,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -421,7 +427,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -516,7 +523,8 @@ module fusion_plus::fusion_order_tests {
             resolver_whitelist,
             SAFETY_DEPOSIT_AMOUNT,
             FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
+            EXCLUSIVE_WITHDRAWAL_DURATION,
+            PUBLIC_WITHDRAWAL_DURATION,
             PRIVATE_CANCELLATION_DURATION,
             auto_cancel_after
         );
@@ -540,7 +548,8 @@ module fusion_plus::fusion_order_tests {
             resolver_whitelist,
             SAFETY_DEPOSIT_AMOUNT,
             FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
+            EXCLUSIVE_WITHDRAWAL_DURATION,
+            PUBLIC_WITHDRAWAL_DURATION,
             PRIVATE_CANCELLATION_DURATION,
             auto_cancel_after
         );
@@ -566,7 +575,8 @@ module fusion_plus::fusion_order_tests {
             resolver_whitelist,
             SAFETY_DEPOSIT_AMOUNT,
             FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
+            EXCLUSIVE_WITHDRAWAL_DURATION,
+            PUBLIC_WITHDRAWAL_DURATION,
             PRIVATE_CANCELLATION_DURATION,
             auto_cancel_after
         );
@@ -590,7 +600,8 @@ module fusion_plus::fusion_order_tests {
             empty_whitelist, // Empty whitelist should fail
             SAFETY_DEPOSIT_AMOUNT,
             FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
+            EXCLUSIVE_WITHDRAWAL_DURATION,
+            PUBLIC_WITHDRAWAL_DURATION,
             PRIVATE_CANCELLATION_DURATION,
             auto_cancel_after
         );
@@ -617,7 +628,8 @@ module fusion_plus::fusion_order_tests {
             resolver_whitelist,
             SAFETY_DEPOSIT_AMOUNT,
             FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
+            EXCLUSIVE_WITHDRAWAL_DURATION,
+            PUBLIC_WITHDRAWAL_DURATION,
             PRIVATE_CANCELLATION_DURATION,
             auto_cancel_after
         );
@@ -648,7 +660,8 @@ module fusion_plus::fusion_order_tests {
             resolver_whitelist,
             invalid_safety_deposit,
             FINALITY_DURATION,
-            EXCLUSIVE_DURATION,
+            EXCLUSIVE_WITHDRAWAL_DURATION,
+            PUBLIC_WITHDRAWAL_DURATION,
             PRIVATE_CANCELLATION_DURATION,
             auto_cancel_after
         );
@@ -673,7 +686,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -703,7 +717,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -742,7 +757,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -783,7 +799,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -828,7 +845,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -882,7 +900,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -898,7 +917,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -967,7 +987,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -983,7 +1004,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1029,7 +1051,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1072,7 +1095,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1109,7 +1133,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist1,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1142,7 +1167,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist2,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1192,7 +1218,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1250,7 +1277,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1292,7 +1320,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1334,7 +1363,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1379,7 +1409,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1437,7 +1468,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1474,7 +1506,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1521,7 +1554,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1616,7 +1650,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1697,7 +1732,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1725,7 +1761,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1753,7 +1790,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1808,7 +1846,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist1,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1824,7 +1863,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist2,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1906,7 +1946,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );
@@ -1972,7 +2013,8 @@ module fusion_plus::fusion_order_tests {
                 resolver_whitelist,
                 SAFETY_DEPOSIT_AMOUNT,
                 FINALITY_DURATION,
-                EXCLUSIVE_DURATION,
+                EXCLUSIVE_WITHDRAWAL_DURATION,
+                PUBLIC_WITHDRAWAL_DURATION,
                 PRIVATE_CANCELLATION_DURATION,
                 auto_cancel_after
             );

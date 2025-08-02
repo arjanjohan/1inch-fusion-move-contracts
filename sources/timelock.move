@@ -3,9 +3,10 @@ module fusion_plus::timelock {
 
     /// Phase constants
     const PHASE_FINALITY: u8 = 0;
-    const PHASE_EXCLUSIVE: u8 = 1;
-    const PHASE_PRIVATE_CANCELLATION: u8 = 2;
-    const PHASE_PUBLIC_CANCELLATION: u8 = 3;
+    const PHASE_EXCLUSIVE_WITHDRAWAL: u8 = 1;
+    const PHASE_PUBLIC_WITHDRAWAL: u8 = 2;
+    const PHASE_PRIVATE_CANCELLATION: u8 = 3;
+    const PHASE_PUBLIC_CANCELLATION: u8 = 4;
 
     /// A timelock that enforces time-based phases for asset locking.
     /// The timelock progresses through phases:
@@ -21,25 +22,9 @@ module fusion_plus::timelock {
     struct Timelock has copy, drop, store {
         created_at: u64,
         finality_duration: u64,
-        exclusive_duration: u64,
+        exclusive_withdrawal_duration: u64,
+        public_withdrawal_duration: u64,
         private_cancellation_duration: u64
-    }
-
-    public fun new(): Timelock {
-        let finality_duration = 10;
-        let exclusive_duration = 10;
-        let private_cancellation_duration = 10;
-        new_internal(
-            finality_duration, exclusive_duration, private_cancellation_duration
-        )
-    }
-
-    public fun new_from_durations(
-        finality_duration: u64, exclusive_duration: u64, private_cancellation_duration: u64
-    ): Timelock {
-        new_internal(
-            finality_duration, exclusive_duration, private_cancellation_duration
-        )
     }
 
     /// Creates a new Timelock with the specified durations.
@@ -47,14 +32,15 @@ module fusion_plus::timelock {
     /// @param finality_duration Duration of finality phase in seconds.
     /// @param exclusive_duration Duration of exclusive phase in seconds.
     /// @param private_cancellation_duration Duration of private cancellation phase in seconds.
-    public fun new_internal(
-        finality_duration: u64, exclusive_duration: u64, private_cancellation_duration: u64
+    public fun new(
+        finality_duration: u64, exclusive_withdrawal_duration: u64, public_withdrawal_duration: u64, private_cancellation_duration: u64
     ): Timelock {
 
         Timelock {
             created_at: timestamp::now_seconds(),
             finality_duration,
-            exclusive_duration,
+            exclusive_withdrawal_duration,
+            public_withdrawal_duration,
             private_cancellation_duration
         }
     }
@@ -66,14 +52,16 @@ module fusion_plus::timelock {
     public fun get_phase(timelock: &Timelock): u8 {
         let now = timestamp::now_seconds();
         let finality_end = timelock.created_at + timelock.finality_duration;
-        let exclusive_end = finality_end + timelock.exclusive_duration;
-        let private_cancellation_end =
-            exclusive_end + timelock.private_cancellation_duration;
+        let exclusive_withdrawal_end = finality_end + timelock.exclusive_withdrawal_duration;
+        let public_withdrawal_end = exclusive_withdrawal_end + timelock.public_withdrawal_duration;
+        let private_cancellation_end = public_withdrawal_end + timelock.private_cancellation_duration;
 
         if (now < finality_end) {
             PHASE_FINALITY
-        } else if (now < exclusive_end) {
-            PHASE_EXCLUSIVE
+        } else if (now < exclusive_withdrawal_end) {
+            PHASE_EXCLUSIVE_WITHDRAWAL
+        } else if (now < public_withdrawal_end) {
+            PHASE_PUBLIC_WITHDRAWAL
         } else if (now < private_cancellation_end) {
             PHASE_PRIVATE_CANCELLATION
         } else {
@@ -88,17 +76,21 @@ module fusion_plus::timelock {
     public fun get_remaining_time(timelock: &Timelock): u64 {
         let now = timestamp::now_seconds();
         let finality_end = timelock.created_at + timelock.finality_duration;
-        let exclusive_end = finality_end + timelock.exclusive_duration;
-        let private_cancellation_end =
-            exclusive_end + timelock.private_cancellation_duration;
+        let exclusive_withdrawal_end = finality_end + timelock.exclusive_withdrawal_duration;
+        let public_withdrawal_end = exclusive_withdrawal_end + timelock.public_withdrawal_duration;
+        let private_cancellation_end = public_withdrawal_end + timelock.private_cancellation_duration;
 
         if (now < finality_end) {
             finality_end - now
-        } else if (now < exclusive_end) {
-            exclusive_end - now
+        } else if (now < exclusive_withdrawal_end) {
+            exclusive_withdrawal_end - now
+        } else if (now < public_withdrawal_end) {
+            public_withdrawal_end - now
         } else if (now < private_cancellation_end) {
             private_cancellation_end - now
-        } else { 0 }
+        } else {
+            0
+        }
     }
 
     /// Gets the total duration of all phases.
@@ -106,7 +98,8 @@ module fusion_plus::timelock {
     /// @param timelock The Timelock to check.
     /// @return u64 The total duration in seconds.
     public fun get_total_duration(timelock: &Timelock): u64 {
-        timelock.finality_duration + timelock.exclusive_duration
+        timelock.finality_duration + timelock.exclusive_withdrawal_duration
+            + timelock.public_withdrawal_duration
             + timelock.private_cancellation_duration
     }
 
@@ -126,12 +119,28 @@ module fusion_plus::timelock {
         get_phase(timelock) == PHASE_FINALITY
     }
 
-    /// Checks if the timelock is in the exclusive phase.
+    /// Checks if the timelock is in the exclusive withdrawal phase.
     ///
     /// @param timelock The Timelock to check.
-    /// @return bool True if in exclusive phase, false otherwise.
-    public fun is_in_exclusive_phase(timelock: &Timelock): bool {
-        get_phase(timelock) == PHASE_EXCLUSIVE
+    /// @return bool True if in exclusive withdrawal phase, false otherwise.
+    public fun is_in_exclusive_withdrawal_phase(timelock: &Timelock): bool {
+        get_phase(timelock) == PHASE_EXCLUSIVE_WITHDRAWAL
+    }
+
+    /// Checks if the timelock is in the public withdrawal phase.
+    ///
+    /// @param timelock The Timelock to check.
+    /// @return bool True if in public withdrawal phase, false otherwise.
+    public fun is_in_public_withdrawal_phase(timelock: &Timelock): bool {
+        get_phase(timelock) == PHASE_PUBLIC_WITHDRAWAL
+    }
+
+    /// Checks if the timelock is in any withdrawal phase.
+    ///
+    /// @param timelock The Timelock to check.
+    /// @return bool True if in any withdrawal phase, false otherwise.
+    public fun is_in_withdrawal_phase(timelock: &Timelock): bool {
+        get_phase(timelock) == PHASE_EXCLUSIVE_WITHDRAWAL || get_phase(timelock) == PHASE_PUBLIC_WITHDRAWAL
     }
 
     /// Checks if the timelock is in the private cancellation phase.
@@ -148,6 +157,14 @@ module fusion_plus::timelock {
     /// @return bool True if in public cancellation phase, false otherwise.
     public fun is_in_public_cancellation_phase(timelock: &Timelock): bool {
         get_phase(timelock) == PHASE_PUBLIC_CANCELLATION
+    }
+
+    /// Checks if the timelock is in any cancellation phase.
+    ///
+    /// @param timelock The Timelock to check.
+    /// @return bool True if in any cancellation phase, false otherwise.
+    public fun is_in_cancellation_phase(timelock: &Timelock): bool {
+        get_phase(timelock) == PHASE_PRIVATE_CANCELLATION || get_phase(timelock) == PHASE_PUBLIC_CANCELLATION
     }
 
     /// Gets the creation timestamp of the timelock.
@@ -170,8 +187,16 @@ module fusion_plus::timelock {
     ///
     /// @param timelock The Timelock to get exclusive duration from.
     /// @return u64 The exclusive duration in seconds.
-    public fun get_exclusive_duration(timelock: &Timelock): u64 {
-        timelock.exclusive_duration
+    public fun get_exclusive_withdrawal_duration(timelock: &Timelock): u64 {
+        timelock.exclusive_withdrawal_duration
+    }
+
+    /// Gets the public withdrawal duration of the timelock.
+    ///
+    /// @param timelock The Timelock to get public withdrawal duration from.
+    /// @return u64 The public withdrawal duration in seconds.
+    public fun get_public_withdrawal_duration(timelock: &Timelock): u64 {
+        timelock.public_withdrawal_duration
     }
 
     /// Gets the private cancellation duration of the timelock.
@@ -185,11 +210,12 @@ module fusion_plus::timelock {
     /// Gets all durations of the timelock.
     ///
     /// @param timelock The Timelock to get durations from.
-    /// @return (u64, u64, u64) The finality, exclusive and cancellation durations in seconds.
-    public fun get_durations(timelock: &Timelock): (u64, u64, u64) {
+    /// @return (u64, u64, u64, u64) The finality, exclusive, public withdrawal and private cancellation durations in seconds.
+    public fun get_durations(timelock: &Timelock): (u64, u64, u64, u64) {
         (
             timelock.finality_duration,
-            timelock.exclusive_duration,
+            timelock.exclusive_withdrawal_duration,
+            timelock.public_withdrawal_duration,
             timelock.private_cancellation_duration
         )
     }
@@ -201,8 +227,13 @@ module fusion_plus::timelock {
     }
 
     #[test_only]
-    public fun get_phase_exclusive(): u8 {
-        PHASE_EXCLUSIVE
+    public fun get_phase_exclusive_withdrawal(): u8 {
+        PHASE_EXCLUSIVE_WITHDRAWAL
+    }
+
+    #[test_only]
+    public fun get_phase_public_withdrawal(): u8 {
+        PHASE_PUBLIC_WITHDRAWAL
     }
 
     #[test_only]
@@ -217,10 +248,10 @@ module fusion_plus::timelock {
 
     #[test_only]
     public fun new_for_test(
-        finality_duration: u64, exclusive_duration: u64, private_cancellation_duration: u64
+        finality_duration: u64, exclusive_withdrawal_duration: u64, public_withdrawal_duration: u64, private_cancellation_duration: u64
     ): Timelock {
-        new_internal(
-            finality_duration, exclusive_duration, private_cancellation_duration
+        new(
+            finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, private_cancellation_duration
         )
     }
 }
