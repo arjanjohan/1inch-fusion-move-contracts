@@ -263,7 +263,7 @@ Besides this, my implementation closely follows the EVM version's architecture, 
 Since Movement uses the same smart contract language, I also deployed the contracts to Movement Network. In [a separate branch](https://github.com/arjanjohan/1inch-fusion-move-contracts/tree/movement) I store the Movement specific `Move.toml` changes.
 
 - [Deployed smart contracts on Movement Testnet](https://explorer.movementnetwork.xyz/account/0x0e6067afa8c1ca1b0cc486ec2a33ef65c3d8678b67ce9f1e4995fddae63cd25b/modules/packages/fusion_plus?network=bardock+testnet)
-- [Resolver transactions on Movement Testnet]()
+- [Resolver transactions on Movement Testnet](https://explorer.movementnetwork.xyz/account/0x55bb788452c5b9489c13c39a67e3588b068b4ae69141de7d250aa0c6b1160842?network=bardock+testnet)
 
 ## Team
 
