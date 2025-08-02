@@ -227,6 +227,35 @@ router::escrow_withdraw(
 );
 ```
 
+### Move tests.
+Summary of the Move tests:
+```
+Test result: OK. Total tests: 146; passed: 146; failed: 0
+Warning: unknown field name found. Expected one of [package, build, addresses, dev-addresses, dependencies, dev-dependencies], but found 'profile'
++-------------------------+
+| Move Coverage Summary   |
++-------------------------+
+Module 0000000000000000000000000000000000000000000000000000000000000123::hashlock
+>>> % Module coverage: 100.00
+Module 0000000000000000000000000000000000000000000000000000000000000123::dutch_auction
+>>> % Module coverage: 92.82
+Module 0000000000000000000000000000000000000000000000000000000000000123::timelock
+>>> % Module coverage: 100.00
+Module 0000000000000000000000000000000000000000000000000000000000000123::fusion_order
+>>> % Module coverage: 94.82
+Module 0000000000000000000000000000000000000000000000000000000000000123::escrow
+>>> % Module coverage: 93.95
+Module 0000000000000000000000000000000000000000000000000000000000000123::router
+>>> % Module coverage: 0.00
++-------------------------+
+| % Move Coverage: 91.66  |
++-------------------------+
+Please use `aptos move coverage -h` for more detailed source or bytecode test coverage of this package
+{
+  "Result": "Success"
+}
+```
+
 ### End-to-End Testing
 
 For comprehensive testing between Ethereum and Aptos networks, refer to the [resolver repository](https://github.com/arjanjohan/1inch-fusion-move-resolver) which includes:
