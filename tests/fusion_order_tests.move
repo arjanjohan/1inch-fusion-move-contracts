@@ -117,7 +117,9 @@ module fusion_plus::fusion_order_tests {
             fusion_order::get_finality_duration(fusion_order) == FINALITY_DURATION, 0
         );
         assert!(
-            fusion_order::get_exclusive_withdrawal_duration(fusion_order) == EXCLUSIVE_WITHDRAWAL_DURATION, 0
+            fusion_order::get_exclusive_withdrawal_duration(fusion_order)
+                == EXCLUSIVE_WITHDRAWAL_DURATION,
+            0
         );
         assert!(
             fusion_order::get_private_cancellation_duration(fusion_order)

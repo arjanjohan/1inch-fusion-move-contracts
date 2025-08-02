@@ -148,7 +148,7 @@ module fusion_plus::dutch_auction {
         auction_end_time: u64,
         decay_duration: u64,
         safety_deposit_amount: u64,
-        resolver_whitelist: vector<address>,
+        resolver_whitelist: vector<address>
     ): Object<DutchAuction> {
         let signer_address = signer::address_of(signer);
 
@@ -704,7 +704,6 @@ module fusion_plus::dutch_auction {
         vector::contains(&auction_ref.resolver_whitelist, &@0x0)
             || vector::contains(&auction_ref.resolver_whitelist, &resolver)
     }
-
 
     // - - - - BORROW FUNCTIONS - - - -
 

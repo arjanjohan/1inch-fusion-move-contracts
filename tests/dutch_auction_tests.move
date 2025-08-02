@@ -58,7 +58,10 @@ module fusion_plus::dutch_auction_tests {
         (account_1, account_2, resolver, metadata, mint_ref)
     }
 
-    fun setup_test_with_default_auction(): (signer, signer, Object<Metadata>, Object<DutchAuction>) {
+    fun setup_test_with_default_auction():
+        (
+        signer, signer, Object<Metadata>, Object<DutchAuction>
+    ) {
         let (maker, _, resolver, metadata, _) = setup_test();
         let hashes = create_test_hashes();
         let resolver_whitelist = create_resolver_whitelist(signer::address_of(&resolver));
@@ -904,7 +907,7 @@ module fusion_plus::dutch_auction_tests {
     fun test_fill_auction_after_decay() {
         let (_, resolver, _, auction) = setup_test_with_default_auction();
         // Set time after decay period but just before end time
-        timestamp::fast_forward_seconds(AUCTION_END_TIME -1 );
+        timestamp::fast_forward_seconds(AUCTION_END_TIME - 1);
 
         // Fill auction after decay
         let (asset, safety_deposit_asset) =

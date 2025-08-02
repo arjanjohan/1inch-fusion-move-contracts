@@ -587,7 +587,9 @@ module fusion_plus::fusion_order {
     ///
     /// @param fusion_order The fusion order to get the exclusive duration from.
     /// @return u64 The exclusive duration.
-    public fun get_exclusive_withdrawal_duration(fusion_order: Object<FusionOrder>): u64 acquires FusionOrder {
+    public fun get_exclusive_withdrawal_duration(
+        fusion_order: Object<FusionOrder>
+    ): u64 acquires FusionOrder {
         let fusion_order_ref = borrow_fusion_order(&fusion_order);
         fusion_order_ref.exclusive_withdrawal_duration
     }
@@ -596,7 +598,9 @@ module fusion_plus::fusion_order {
     ///
     /// @param fusion_order The fusion order to get the public withdrawal duration from.
     /// @return u64 The public withdrawal duration.
-    public fun get_public_withdrawal_duration(fusion_order: Object<FusionOrder>): u64 acquires FusionOrder {
+    public fun get_public_withdrawal_duration(
+        fusion_order: Object<FusionOrder>
+    ): u64 acquires FusionOrder {
         let fusion_order_ref = borrow_fusion_order(&fusion_order);
         fusion_order_ref.public_withdrawal_duration
     }

@@ -1,6 +1,5 @@
 #[test_only]
 module fusion_plus::timelock_tests {
-    use std::debug;
     use aptos_framework::timestamp;
     use aptos_framework::account;
     use fusion_plus::timelock;
@@ -30,7 +29,8 @@ module fusion_plus::timelock_tests {
             );
 
         // Verify initial state
-        let (finality, exclusive_withdrawal, public_withdrawal, private_cancellation) = timelock::get_durations(&timelock);
+        let (finality, exclusive_withdrawal, public_withdrawal, private_cancellation) =
+            timelock::get_durations(&timelock);
         assert!(finality == FINALITY_DURATION, 0);
         assert!(exclusive_withdrawal == EXCLUSIVE_WITHDRAWAL_DURATION, 0);
         assert!(public_withdrawal == PUBLIC_WITHDRAWAL_DURATION, 0);
@@ -113,7 +113,8 @@ module fusion_plus::timelock_tests {
         // Check remaining time in exclusive phase (30 seconds into exclusive)
         timestamp::update_global_time_for_test_secs(FINALITY_DURATION + 30);
         assert!(
-            timelock::get_remaining_time(&timelock) == EXCLUSIVE_WITHDRAWAL_DURATION - 30,
+            timelock::get_remaining_time(&timelock)
+                == EXCLUSIVE_WITHDRAWAL_DURATION - 30,
             0
         );
 
@@ -128,16 +129,19 @@ module fusion_plus::timelock_tests {
 
         // Check remaining time in private cancellation phase (30 seconds into private cancellation)
         timestamp::update_global_time_for_test_secs(
-            FINALITY_DURATION + EXCLUSIVE_WITHDRAWAL_DURATION + PUBLIC_WITHDRAWAL_DURATION + 30
+            FINALITY_DURATION + EXCLUSIVE_WITHDRAWAL_DURATION
+                + PUBLIC_WITHDRAWAL_DURATION + 30
         );
         assert!(
-            timelock::get_remaining_time(&timelock) == PRIVATE_CANCELLATION_DURATION - 30,
+            timelock::get_remaining_time(&timelock)
+                == PRIVATE_CANCELLATION_DURATION - 30,
             0
         );
 
         // Check remaining time in public cancellation phase
         timestamp::update_global_time_for_test_secs(
-            FINALITY_DURATION + EXCLUSIVE_WITHDRAWAL_DURATION + PUBLIC_WITHDRAWAL_DURATION + PRIVATE_CANCELLATION_DURATION + 1
+            FINALITY_DURATION + EXCLUSIVE_WITHDRAWAL_DURATION
+                + PUBLIC_WITHDRAWAL_DURATION + PRIVATE_CANCELLATION_DURATION + 1
         );
         assert!(timelock::get_remaining_time(&timelock) == 0, 0);
     }
@@ -154,9 +158,9 @@ module fusion_plus::timelock_tests {
                 PRIVATE_CANCELLATION_DURATION
             );
 
-        let total_duration = FINALITY_DURATION + EXCLUSIVE_WITHDRAWAL_DURATION
-            + PUBLIC_WITHDRAWAL_DURATION
-            + PRIVATE_CANCELLATION_DURATION;
+        let total_duration =
+            FINALITY_DURATION + EXCLUSIVE_WITHDRAWAL_DURATION
+                + PUBLIC_WITHDRAWAL_DURATION + PRIVATE_CANCELLATION_DURATION;
         assert!(timelock::get_total_duration(&timelock) == total_duration, 0);
 
         let created_at = timelock::get_created_at(&timelock);
@@ -183,11 +187,18 @@ module fusion_plus::timelock_tests {
 
         // Move to exclusive phase
         timestamp::fast_forward_seconds(FINALITY_DURATION + 1);
-        assert!(timelock::get_phase(&timelock) == timelock::get_phase_exclusive_withdrawal(), 0);
+        assert!(
+            timelock::get_phase(&timelock)
+                == timelock::get_phase_exclusive_withdrawal(),
+            0
+        );
 
         // Move to public withdrawal phase
         timestamp::fast_forward_seconds(EXCLUSIVE_WITHDRAWAL_DURATION + 1);
-        assert!(timelock::get_phase(&timelock) == timelock::get_phase_public_withdrawal(), 0);
+        assert!(
+            timelock::get_phase(&timelock) == timelock::get_phase_public_withdrawal(),
+            0
+        );
 
         // Move to private cancellation phase
         timestamp::fast_forward_seconds(PUBLIC_WITHDRAWAL_DURATION + 1);
@@ -204,5 +215,4 @@ module fusion_plus::timelock_tests {
             0
         );
     }
-
 }

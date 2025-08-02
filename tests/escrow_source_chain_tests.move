@@ -139,8 +139,16 @@ module fusion_plus::escrow_source_chain_tests {
         assert!(escrow::get_taker(escrow) == signer::address_of(&resolver_1), 0);
         assert!(escrow::get_hash(escrow) == *vector::borrow(&hashes, 0), 0);
         assert!(escrow::get_finality_duration(escrow) == FINALITY_DURATION, 0);
-        assert!(escrow::get_exclusive_withdrawal_duration(escrow) == EXCLUSIVE_WITHDRAWAL_DURATION, 0);
-        assert!(escrow::get_public_withdrawal_duration(escrow) == PUBLIC_WITHDRAWAL_DURATION, 0);
+        assert!(
+            escrow::get_exclusive_withdrawal_duration(escrow)
+                == EXCLUSIVE_WITHDRAWAL_DURATION,
+            0
+        );
+        assert!(
+            escrow::get_public_withdrawal_duration(escrow)
+                == PUBLIC_WITHDRAWAL_DURATION,
+            0
+        );
         assert!(
             escrow::get_private_cancellation_duration(escrow)
                 == PRIVATE_CANCELLATION_DURATION,
@@ -900,8 +908,9 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to private cancellation phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, _) =
-            timelock::get_durations(&timelock);
+        let (
+            finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, _
+        ) = timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration
                 + exclusive_withdrawal_duration + public_withdrawal_duration + 1
@@ -1039,8 +1048,9 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to private cancellation phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, _) =
-            timelock::get_durations(&timelock);
+        let (
+            finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, _
+        ) = timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration
                 + exclusive_withdrawal_duration + public_withdrawal_duration + 1
@@ -1099,8 +1109,9 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to private cancellation phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, _) =
-            timelock::get_durations(&timelock);
+        let (
+            finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, _
+        ) = timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration
                 + exclusive_withdrawal_duration + public_withdrawal_duration + 1
@@ -1156,11 +1167,16 @@ module fusion_plus::escrow_source_chain_tests {
 
         // Fast forward to public cancellation phase
         let timelock = escrow::get_timelock(escrow);
-        let (finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, private_cancellation_duration) =
-            timelock::get_durations(&timelock);
+        let (
+            finality_duration,
+            exclusive_withdrawal_duration,
+            public_withdrawal_duration,
+            private_cancellation_duration
+        ) = timelock::get_durations(&timelock);
         timestamp::update_global_time_for_test_secs(
             timelock::get_created_at(&timelock) + finality_duration
-                + exclusive_withdrawal_duration + public_withdrawal_duration + private_cancellation_duration + 1
+                + exclusive_withdrawal_duration + public_withdrawal_duration
+                + private_cancellation_duration + 1
         );
 
         // Anyone can recover during public cancellation phase

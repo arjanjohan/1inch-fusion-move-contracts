@@ -259,7 +259,10 @@ module fusion_plus::escrow {
 
         let timelock =
             timelock::new(
-                finality_duration, exclusive_withdrawal_duration, public_withdrawal_duration, private_cancellation_duration
+                finality_duration,
+                exclusive_withdrawal_duration,
+                public_withdrawal_duration,
+                private_cancellation_duration
             );
         let hashlock = hashlock::create_hashlock(hash);
 
@@ -390,9 +393,7 @@ module fusion_plus::escrow {
     /// @reverts EOBJECT_DOES_NOT_EXIST if the escrow does not exist.
     /// @reverts EINVALID_CALLER if the signer is not the resolver during private cancellation.
     /// @reverts EINVALID_PHASE if not in cancellation phase.
-    public fun recovery(
-        signer: &signer, escrow: Object<Escrow>
-    ) acquires Escrow, EscrowController {
+    public fun recovery(signer: &signer, escrow: Object<Escrow>) acquires Escrow, EscrowController {
         let signer_address = signer::address_of(signer);
 
         assert!(escrow_exists(escrow), EOBJECT_DOES_NOT_EXIST);
