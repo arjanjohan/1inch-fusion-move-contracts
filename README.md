@@ -4,9 +4,7 @@
 
 Move United is a comprehensive cross-chain swap protocol that enables secure asset transfers between any EVM and Aptos blockchain. The protocol uses a combination of hashlock/timelock mechanisms and Dutch auctions to ensure atomic cross-chain swaps. This is the Aptos implementation of the [1inch Fusion Plus](https://github.com/1inch/cross-chain-swap) protocol.
 
-## Overview
-
-The protocol enables secure cross-chain swaps through a clean separation of concerns with hashlocked and timelocked escrows. It consists of several key components that work together to provide a secure, trustless cross-chain swap experience.
+For the E2E tests between Ethereum Mainnet Fork and Aptos Testnet, please see the [1inch-fusion-move-resolver](https://github.com/arjanjohan/1inch-fusion-move-resolver) repo.
 
 ### Core Components
 
@@ -70,42 +68,38 @@ The protocol supports two distinct cross-chain swap flows:
 ```
 [ETHEREUM]                                    [APTOS]
 
-User creates order via SDK
-         ↓
-   [Can be cancelled by user]
-         ↓
-Resolver picks up order              User creates Dutch auction
-         ↓                                   ↓
-   Source Escrow                        [Price decays over time]
-         ↓                                   ↓
-                                    Resolver fills auction
-                                             ↓
-                                    Destination Escrow
-                                             ↓
-                                    [Timelock phases begin]
-                                             ↓
-                                    [Hashlock protection active]
-                                             ↓
-                                    [Withdrawal or Recovery]
+User submits order                    User initiates Dutch auction
+         ↓                                       ↓
+         ↓                             [Price decays over time]
+         ↓                                       ↓
+Resolver picks up order                  Resolver fills auction
+         ↓                                       ↓
+   Source Escrow                          Destination Escrow
+         ↓                                       ↓
+   [Timelock phases begin]               [Timelock phases begin]
+         ↓                                       ↓
+   [Hashlock protection active]          [Hashlock protection active]
+         ↓                                       ↓
+   [Withdrawal or Recovery]              [Withdrawal or Recovery]
 ```
 
 #### **APT → ETH Flow (Fusion Order)**
 ```
 [APTOS]                                    [ETHEREUM]
 
-User creates Fusion Order               [Dutch auction]
-         ↓                                   ↓
-   [Can be cancelled by user]             [Price decays over time]
-         ↓                                   ↓
-Resolver picks up order              Resolver creates destination escrow
-         ↓                                   ↓
-   Fusion Order → Source Escrow            Destination Escrow
-                     ↓                     ↓
-                    [Timelock phases begin]
-                                 ↓
-                    [Hashlock protection active]
-                                 ↓
-                    [Withdrawal or Recovery]
+User creates Fusion Order                Dutch auction initiated on EVM
+         ↓                                       ↓
+   [Can be cancelled by user]           [Price decays over time]
+         ↓                                       ↓
+Resolver picks up order                   Resolver fills auction
+         ↓                                       ↓
+   Source Escrow                          Destination Escrow
+         ↓                                       ↓
+   [Timelock phases begin]               [Timelock phases begin]
+         ↓                                       ↓
+   [Hashlock protection active]           [Hashlock protection active]
+         ↓                                       ↓
+   [Withdrawal or Recovery]              [Withdrawal or Recovery]
 ```
 
 ### Timelock Phases
