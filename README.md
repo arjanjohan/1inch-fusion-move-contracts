@@ -1,14 +1,21 @@
-# Move United - Cross-Chain Atomic Swap Protocol
+# Move United Smart Contracts
+
+<div align="center">
 
 ![Logo](assets/new_logo.png)
+<h4 align="center">
+  <a href="../../README.md">E2E Testing</a> |
+  <a href="../../tests/main.spec.ts">E2E Test Suite</a>
+</h4>
+</div>
 
 Move United is a comprehensive cross-chain swap protocol that enables secure asset transfers between any EVM and Aptos blockchain. The protocol uses a combination of hashlock/timelock mechanisms and Dutch auctions to ensure atomic cross-chain swaps. This is the Aptos implementation of the [1inch Fusion Plus](https://github.com/1inch/cross-chain-swap) protocol.
 
-For the E2E tests between Ethereum Mainnet Fork and Aptos Testnet, please see the [1inch-fusion-move-resolver](https://github.com/arjanjohan/1inch-fusion-move-resolver) repo.
+For the E2E tests between Ethereum Mainnet Fork and Aptos Testnet, please see the [main README](../../README.md) in the root of this repository.
 
-### Core Components
+## 🏗️ Core Components
 
-#### **Router Module** (`router.move`)
+### **Router Module** (`router.move`)
 Central entry point for all user-facing operations:
 - `create_auction` - Create Dutch auctions for ETH → APT orders
 - `cancel_auction` - Cancel Dutch auctions
@@ -21,7 +28,7 @@ Central entry point for all user-facing operations:
 - `escrow_withdraw` - Withdraw from escrow using secret
 - `escrow_recovery` - Recover escrow during cancellation phases
 
-#### **Dutch Auction Module** (`dutch_auction.move`)
+### **Dutch Auction Module** (`dutch_auction.move`)
 Manages price discovery for ETH → APT orders:
 - Dynamic pricing with decay over time
 - Support for partial fills with multiple segments
@@ -29,7 +36,7 @@ Manages price discovery for ETH → APT orders:
 - Segment-based fill tracking
 - Resolver whitelist support
 
-#### **Fusion Order Module** (`fusion_order.move`)
+### **Fusion Order Module** (`fusion_order.move`)
 Handles APT → ETH order creation and management:
 - Order creation with resolver whitelist
 - Partial fill support with segment tracking
@@ -38,7 +45,7 @@ Handles APT → ETH order creation and management:
 - Can be cancelled at any time by user
 - Option to allow resolver to cancel/recover stale orders
 
-#### **Escrow Module** (`escrow.move`)
+### **Escrow Module** (`escrow.move`)
 Core escrow functionality for both chains:
 - Source and destination escrow deployment
 - Timelock and hashlock integration
@@ -46,25 +53,25 @@ Core escrow functionality for both chains:
 - Cross-chain secret verification
 - Support for both single and partial fills
 
-#### **Hashlock Module** (`hashlock.move`)
+### **Hashlock Module** (`hashlock.move`)
 Cryptographic secret management:
 - Hash creation and verification
 - Merkle tree support for multiple secrets
 - Secret validation and security
 - Support for segment-based secrets
 
-#### **Timelock Module** (`timelock.move`)
+### **Timelock Module** (`timelock.move`)
 Time-based phase management:
 - Finality, exclusive, and cancellation phases
 - Phase validation and duration tracking
 - Public and private cancellation periods
 - Configurable duration parameters
 
-### Architecture Flow
+## 🔄 Architecture Flow
 
 The protocol supports two distinct cross-chain swap flows:
 
-#### **ETH → APT Flow (Dutch Auction)**
+### **ETH → APT Flow (Dutch Auction)**
 ```
 [ETHEREUM]                                    [APTOS]
 
@@ -83,7 +90,7 @@ Resolver picks up order                  Resolver fills auction
    [Withdrawal or Recovery]              [Withdrawal or Recovery]
 ```
 
-#### **APT → ETH Flow (Fusion Order)**
+### **APT → ETH Flow (Fusion Order)**
 ```
 [APTOS]                                    [ETHEREUM]
 
@@ -102,33 +109,53 @@ Resolver picks up order                   Resolver fills auction
    [Withdrawal or Recovery]              [Withdrawal or Recovery]
 ```
 
-### Timelock Phases
+## Requirements
 
-![Timelocks](assets/timelocks.png)
+Before you begin, you need to install the following tools:
 
-1. **Finality Phase**
-   - Initial period where settings can be modified
-   - Recipient can be set or updated
-   - No withdrawals allowed
-   - Duration: `finality_duration`
+- [Aptos CLI](https://aptos.dev/tools/aptos-cli/)
 
-2. **Exclusive Phase**
-   - Only intended recipient can claim assets
-   - Requires valid secret for withdrawal
-   - Hashlock verification required
-   - Duration: `exclusive_duration`
+## Quickstart
 
-3. **Private Cancellation Phase**
-   - Owner can cancel and reclaim assets
-   - Requires no prior withdrawal
-   - Admin-only recovery
-   - Duration: `private_cancellation_duration`
+1. **Build the project**
+```bash
+aptos move compile
+```
 
-4. **Public Cancellation Phase**
-   - Anyone with the correct secret can claim
-   - Anyone can cancel if not claimed
-   - Public recovery available
-   - Duration: Remaining time until auction end
+2. **Run tests**
+```bash
+aptos move test
+```
+
+3. **Deploy the contracts**
+```bash
+aptos move publish --named-addresses fusion_plus=YOUR_ACCOUNT_ADDRESS
+```
+
+## 🧪 Testing
+
+### Move Test Results
+```
+Test result: OK. Total tests: 146; passed: 146; failed: 0
++-------------------------+
+| Move Coverage Summary   |
++-------------------------+
+Module 0000000000000000000000000000000000000000000000000000000000000123::hashlock
+>>> % Module coverage: 100.00
+Module 0000000000000000000000000000000000000000000000000000000000000123::dutch_auction
+>>> % Module coverage: 92.82
+Module 0000000000000000000000000000000000000000000000000000000000000123::timelock
+>>> % Module coverage: 100.00
+Module 0000000000000000000000000000000000000000000000000000000000000123::fusion_order
+>>> % Module coverage: 94.82
+Module 0000000000000000000000000000000000000000000000000000000000000123::escrow
+>>> % Module coverage: 93.95
+Module 0000000000000000000000000000000000000000000000000000000000000123::router
+>>> % Module coverage: 0.00
++-------------------------+
+| % Move Coverage: 91.66  |
++-------------------------+
+```
 
 ## Project Structure
 
@@ -154,118 +181,13 @@ aptos-contracts/
 └── Move.toml                  # Project configuration
 ```
 
-## Requirements
-
-Before you begin, you need to install the following tools:
-
-- [Aptos CLI](https://aptos.dev/tools/aptos-cli/)
-
-## Quickstart
-
-1. Build the project:
-```bash
-aptos move compile
-```
-
-2. Run tests:
-```bash
-aptos move test
-```
-
-3. Deploy the contracts:
-```bash
-aptos move publish --named-addresses fusion_plus=YOUR_ACCOUNT_ADDRESS
-```
-
-## Usage
-
-### Basic Integration
-
-The Move United protocol can be integrated into your applications in several ways:
-
-#### 1. Direct Contract Interaction
-
-```move
-// Example: Creating a Dutch auction for ETH → APT swap
-let auction_id = router::create_auction(
-    &mut account,
-    initial_price,
-    final_price,
-    duration_seconds,
-    asset_amount,
-    safety_deposit
-);
-```
-
-#### 2. Fusion Order Creation
-
-```move
-// Example: Creating a Fusion order for APT → ETH swap
-let order_id = router::create_fusion_order(
-    &mut account,
-    asset_amount,
-    safety_deposit,
-    resolver_whitelist,
-    stale_timestamp
-);
-```
-
-#### 3. Escrow Operations
-
-```move
-// Example: Withdrawing from escrow using secret
-router::escrow_withdraw(
-    &mut account,
-    escrow_id,
-    secret
-);
-```
-
-### Move tests.
-Summary of the Move tests:
-```
-Test result: OK. Total tests: 146; passed: 146; failed: 0
-Warning: unknown field name found. Expected one of [package, build, addresses, dev-addresses, dependencies, dev-dependencies], but found 'profile'
-+-------------------------+
-| Move Coverage Summary   |
-+-------------------------+
-Module 0000000000000000000000000000000000000000000000000000000000000123::hashlock
->>> % Module coverage: 100.00
-Module 0000000000000000000000000000000000000000000000000000000000000123::dutch_auction
->>> % Module coverage: 92.82
-Module 0000000000000000000000000000000000000000000000000000000000000123::timelock
->>> % Module coverage: 100.00
-Module 0000000000000000000000000000000000000000000000000000000000000123::fusion_order
->>> % Module coverage: 94.82
-Module 0000000000000000000000000000000000000000000000000000000000000123::escrow
->>> % Module coverage: 93.95
-Module 0000000000000000000000000000000000000000000000000000000000000123::router
->>> % Module coverage: 0.00
-+-------------------------+
-| % Move Coverage: 91.66  |
-+-------------------------+
-Please use `aptos move coverage -h` for more detailed source or bytecode test coverage of this package
-{
-  "Result": "Success"
-}
-```
-
-### End-to-End Testing
-
-For comprehensive testing between Ethereum and Aptos networks, refer to the [resolver repository](https://github.com/arjanjohan/1inch-fusion-move-resolver) which includes:
-
-- **Complete E2E test suite**: [main.spec.ts](https://github.com/arjanjohan/1inch-fusion-move-resolver/blob/master/tests/main.spec.ts)
-- **Setup instructions**: [README.md](https://github.com/arjanjohan/1inch-fusion-move-resolver/blob/master/README.md)
-- **Local Ethereum fork integration** with Aptos testnet
-- **Cross-chain transaction verification**
-
 ## Next Steps
 
-The Move United implementation is complete with all core Fusion+ functionality, including hash and timelock mechanisms, partial fills, Dutch auctions, and escrow with withdrawal and recovery mechanisms. However, several enhancements are planned for development after this hackathon:
+The Move United implementation is complete with all core Fusion+ functionality. However, several enhancements are planned:
 
-- **Frontend integration** - Aptos needs to be integrated in the 1inch frontend, during the hackathon I focussed on the core contracts and I did not prioritize making a frontend.
-- **Sponsored Transactions** - This is a feature on Aptos that can be added to allow for a gasless experience. More details [here](https://aptos.dev/build/guides/sponsored-transactions).
-- **1inch SDK Integration** - Currently the 1inch SDK does not support Aptos. I had a look at the SDK, and integrating a completely new non-EVM chain in this SDK was out of scope for me during this hackathon. But it's probably the most important item to build after the hackathon!
+- **Frontend integration** - Aptos needs to be integrated in the 1inch frontend.
+- **Sponsored Transactions** - Gasless experience on Aptos by using  sponsored transactions. More details [here](https://aptos.dev/build/guides/sponsored-transactions).
+- **1inch SDK Integration** - Currently the 1inch SDK does not support Aptos, so support for this must be added.
 
 ## Hackathon bounties
 

@@ -357,7 +357,7 @@ module fusion_plus::fusion_order {
             let num_hashes = vector::length(&fusion_order_ref.hashes);
 
             // Validate segment index is valid for partial fills (can't use last segment)
-            assert!(segment_val < num_hashes - 1, EINVALID_SEGMENT);
+            assert!(segment_val < num_hashes - 1, EINVALID_SEGMENT); // AVH
 
             // Validate segment is not already filled and is filled in order
             if (option::is_some(&fusion_order_ref.last_filled_segment)) {
@@ -756,6 +756,7 @@ module fusion_plus::fusion_order {
         hashlock::verify_hash_with_secret(stored_hash, secret)
     }
 
+    #[view]
     /// Gets the hash for a specific segment.
     ///
     /// @param fusion_order The fusion order.
